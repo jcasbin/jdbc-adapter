@@ -39,7 +39,7 @@ public class JDBCAdapterTest {
         // so we need to load the policy from the file adapter (.CSV) first.
         Enforcer e = new Enforcer("examples/rbac_model.conf", "examples/rbac_policy.csv");
 
-        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/casbin_rule", "root", "");
+        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
         // This is a trick to save the current policy to the DB.
         // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
         // The current policy means the policy in the jCasbin enforcer (aka in memory).
@@ -63,7 +63,7 @@ public class JDBCAdapterTest {
         // Now the DB has policy, so we can provide a normal use case.
         // Create an adapter and an enforcer.
         // new Enforcer() will load the policy automatically.
-        a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/casbin_rule", "root", "");
+        a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
         e = new Enforcer("examples/rbac_model.conf", a);
         testGetPolicy(e, asList(
                 asList("alice", "data1", "read"),

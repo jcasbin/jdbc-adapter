@@ -42,22 +42,45 @@ public class JDBCAdapter implements Adapter {
     private String url;
     private String username;
     private String password;
+    private boolean dbSpecified;
 
     private Connection conn = null;
 
     /**
      * JDBCAdapter is the constructor for JDBCAdapter.
      *
-     * @param driver the path of the policy file.
-     * @param url the path of the policy file.
-     * @param username the path of the policy file.
-     * @param password the path of the policy file.
+     * @param driver the JDBC driver, like "com.mysql.cj.jdbc.Driver".
+     * @param url the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
+     * @param username the username of the database.
+     * @param password the password of the database.
      */
     public JDBCAdapter(String driver, String url, String username, String password) {
         this.driver = driver;
         this.url = url;
         this.username = username;
         this.password = password;
+        this.dbSpecified = false;
+
+        open();
+    }
+
+    /**
+     * JDBCAdapter is the constructor for JDBCAdapter.
+     *
+     * @param driver the JDBC driver, like "com.mysql.cj.jdbc.Driver".
+     * @param url the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
+     * @param username the username of the database.
+     * @param password the password of the database.
+     * @param dbSpecified whether you have specified an existing DB in url.
+     * If dbSpecified == true, you need to make sure the DB in url exists.
+     * If dbSpecified == false, the adapter will automatically create a DB named "casbin".
+     */
+    public JDBCAdapter(String driver, String url, String username, String password, boolean dbSpecified) {
+        this.driver = driver;
+        this.url = url;
+        this.username = username;
+        this.password = password;
+        this.dbSpecified = dbSpecified;
 
         open();
     }
@@ -66,13 +89,35 @@ public class JDBCAdapter implements Adapter {
         close();
     }
 
+    private void createDatabase() {
+        try {
+            conn = DriverManager.getConnection(url, username, password);
+
+            Statement stmt = conn.createStatement();
+            String sql = "CREATE DATABASE IF NOT EXISTS casbin";
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void open() {
         try {
             Class.forName(driver);
-            conn = DriverManager.getConnection(url, username, password);
+
+            if (dbSpecified) {
+                conn = DriverManager.getConnection(url, username, password);
+            } else {
+                createDatabase();
+
+                conn = DriverManager.getConnection(url + "casbin", username, password);
+            }
+
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
+
+        createTable();
     }
 
     private void close() {
@@ -87,7 +132,7 @@ public class JDBCAdapter implements Adapter {
     private void createTable() {
         try {
             Statement stmt = conn.createStatement();
-            String sql = "CREATE TABLE casbin_rule " +
+            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule " +
                     "(ptype VARCHAR(100) not NULL, " +
                     " v0 VARCHAR(100), " +
                     " v1 VARCHAR(100), " +
