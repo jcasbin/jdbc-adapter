@@ -1,4 +1,4 @@
-JDBC Adapter
+JDBC Adapter [![Build Status](https://travis-ci.org/jcasbin/jdbc-adapter.svg?branch=master)](https://travis-ci.org/jcasbin/jdbc-adapter) [![Coverage Status](https://coveralls.io/repos/github/jcasbin/jdbc-adapter/badge.svg?branch=master)](https://coveralls.io/github/jcasbin/jdbc-adapter?branch=master)
 ====
 
 JDBC Adapter is the [JDBC](https://en.wikipedia.org/wiki/Java_Database_Connectivity) adapter for [jCasbin](https://github.com/casbin/jcasbin). With this library, jCasbin can load policy from JDBC supported database or save policy to it.
