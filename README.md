@@ -32,7 +32,7 @@ package com.company.test;
 
 import org.casbin.jcasbin.main.Enforcer;
 import org.casbin.jcasbin.util.Util;
-import org.casbin.JDBCAdapter;
+import org.casbin.adapter.JDBCAdapter;
 
 public class Test {
     public static void main() {
