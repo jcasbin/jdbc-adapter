@@ -32,6 +32,7 @@ package com.company.test;
 
 import org.casbin.jcasbin.main.Enforcer;
 import org.casbin.jcasbin.util.Util;
+import org.casbin.JDBCAdapter;
 
 public class Test {
     public static void main() {
@@ -43,8 +44,7 @@ public class Test {
         // Or you can use an existing DB "abc" like this:
         // The adapter will use the table named "casbin_rule".
         // If it doesn't exist, the adapter will create it automatically.
-        // JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/casbin", "root", "123", true)
-
+        // JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/casbin", "root", "123", true);
 
         Enforcer e = new Enforcer("examples/rbac_model.conf", a);
 
