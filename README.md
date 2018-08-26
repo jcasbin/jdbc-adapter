@@ -15,7 +15,15 @@ Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E1922
 
 ## Installation
 
-    git clone https://github.com/jcasbin/jdbc-adapter
+For Maven:
+
+```
+<dependency>
+  <groupId>org.casbin</groupId>
+  <artifactId>jdbc-adapter</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
 
 ## Simple Example
 
