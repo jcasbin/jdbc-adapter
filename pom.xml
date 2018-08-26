@@ -8,8 +8,45 @@
     <artifactId>jdbc-adapter</artifactId>
     <version>1.0.0</version>
 
-    <name>jCasbin JDBC Adapter</name>
+    <name>JDBC Adapter for JCasbin</name>
     <description>Load policy from JDBC supported database or save policy to it</description>
+    <url>https://github.com/jcasbin/jdbc-adapter</url>
+    <inceptionYear>2018</inceptionYear>
+
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/jcasbin/jdbc-adapter/issues</url>
+    </issueManagement>
+
+    <ciManagement>
+        <system>Travis CI</system>
+        <url>https://travis-ci.org/jcasbin/jdbc-adapter</url>
+    </ciManagement>
+
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <url>https://github.com/jcasbin/jdbc-adapter</url>
+        <connection>git@github.com:jcasbin/jdbc-adapter.git</connection>
+        <developerConnection>https://github.com/hsluoyz</developerConnection>
+    </scm>
+    <developers>
+        <developer>
+            <name>Yang Luo</name>
+            <email>hsluoyz@qq.com</email>
+            <url>https://github.com/hsluoyz</url>
+        </developer>
+    </developers>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
