@@ -21,11 +21,13 @@ import org.junit.Test;
 import java.util.List;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class JDBCAdapterTest {
+    static void testEnforce(Enforcer e, String sub, Object obj, String act, boolean res) {
+        assertEquals(res, e.enforce(sub, obj, act));
+    }
+
     private static void testGetPolicy(Enforcer e, List<List<String>> res) {
         List<List<String>> myRes = e.getPolicy();
         Util.logPrint("Policy: " + myRes);
@@ -78,24 +80,24 @@ public class JDBCAdapterTest {
     public void testAddAndRemovePolicy() {
         JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
         Enforcer e = new Enforcer("examples/rbac_model.conf", a);
-        assertFalse(e.enforce("cathy", "data1", "read"));
+        testEnforce(e, "cathy", "data1", "read", false);
 
         //add a policy
         e.addPolicy("cathy", "data1", "read");
-        assertTrue(e.enforce("cathy", "data1", "read"));
+        testEnforce(e, "cathy", "data1", "read", true);
 
         //reload policies from DB
         e.clearPolicy();
         a.loadPolicy(e.getModel());
-        assertTrue(e.enforce("cathy", "data1", "read"));
+        testEnforce(e, "cathy", "data1", "read", true);
 
         //remove a policy
         e.removePolicy("cathy", "data1", "read");
-        assertFalse(e.enforce("cathy", "data1", "read"));
+        testEnforce(e, "cathy", "data1", "read", false);
 
         //reload policies from DB
         e.clearPolicy();
         a.loadPolicy(e.getModel());
-        assertFalse(e.enforce("cathy", "data1", "read"));
+        testEnforce(e, "cathy", "data1", "read", false);
     }
 }
