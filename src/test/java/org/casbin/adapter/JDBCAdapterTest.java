@@ -21,6 +21,8 @@ import org.junit.Test;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class JDBCAdapterTest {
@@ -70,5 +72,30 @@ public class JDBCAdapterTest {
                 asList("bob", "data2", "write"),
                 asList("data2_admin", "data2", "read"),
                 asList("data2_admin", "data2", "write")));
+    }
+
+    @Test
+    public void testAddAndRemovePolicy() {
+        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        Enforcer e = new Enforcer("examples/rbac_model.conf", a);
+        assertFalse(e.enforce("cathy", "data1", "read"));
+
+        //add a policy
+        e.addPolicy("cathy", "data1", "read");
+        assertTrue(e.enforce("cathy", "data1", "read"));
+
+        //reload policies from DB
+        e.clearPolicy();
+        a.loadPolicy(e.getModel());
+        assertTrue(e.enforce("cathy", "data1", "read"));
+
+        //remove a policy
+        e.removePolicy("cathy", "data1", "read");
+        assertFalse(e.enforce("cathy", "data1", "read"));
+
+        //reload policies from DB
+        e.clearPolicy();
+        a.loadPolicy(e.getModel());
+        assertFalse(e.enforce("cathy", "data1", "read"));
     }
 }
