@@ -14,14 +14,14 @@
 
 package org.casbin.adapter;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.casbin.jcasbin.model.Assertion;
 import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.Helper;
 
 import java.sql.*;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 class CasbinRule {
     String ptype;
@@ -303,7 +303,29 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void addPolicy(String sec, String ptype, List<String> rule) {
-        throw new Error("not implemented");
+        if(CollectionUtils.isEmpty(rule)) return;
+        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+        PreparedStatement ps = null;
+        try {
+            ps = conn.prepareStatement(sql);
+
+            CasbinRule line = savePolicyLine(ptype, rule);
+
+            ps.setString(1, line.ptype);
+            ps.setString(2, line.v0);
+            ps.setString(3, line.v1);
+            ps.setString(4, line.v2);
+            ps.setString(5, line.v3);
+            ps.setString(6, line.v4);
+            ps.setString(7, line.v5);
+            ps.addBatch();
+
+            ps.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            close(ps);
+        }
     }
 
     /**
@@ -311,7 +333,8 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void removePolicy(String sec, String ptype, List<String> rule) {
-        throw new Error("not implemented");
+        if(CollectionUtils.isEmpty(rule)) return;
+        removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
     }
 
     /**
@@ -319,6 +342,38 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void removeFilteredPolicy(String sec, String ptype, int fieldIndex, String... fieldValues) {
-        throw new Error("not implemented");
+        List<String> values = Optional.ofNullable(Arrays.asList(fieldValues)).orElse(new ArrayList<>());
+        if(CollectionUtils.isEmpty(values)) return;
+        String sql = "DELETE FROM casbin_rule WHERE ptype = ?";
+        int columnIndex = fieldIndex;
+        for (int i = 0; i < values.size(); i++) {
+            sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
+            columnIndex++;
+        }
+        PreparedStatement ps = null;
+
+        try {
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, ptype);
+            for (int j = 0; j < values.size(); j++) {
+                ps.setString(j+2, values.get(j));
+            }
+
+            ps.addBatch();
+
+            ps.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            close(ps);
+        }
+    }
+
+    private void close(PreparedStatement ps) {
+        try {
+            ps.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
