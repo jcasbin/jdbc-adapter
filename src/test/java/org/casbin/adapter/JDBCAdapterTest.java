@@ -82,20 +82,26 @@ public class JDBCAdapterTest {
         Enforcer e = new Enforcer("examples/rbac_model.conf", a);
         testEnforce(e, "cathy", "data1", "read", false);
 
-        //add a policy
+        // AutoSave is enabled by default.
+        // It can be disabled by:
+        // e.enableAutoSave(false);
+
+        // Because AutoSave is enabled, the policy change not only affects the policy in Casbin enforcer,
+        // but also affects the policy in the storage.
         e.addPolicy("cathy", "data1", "read");
         testEnforce(e, "cathy", "data1", "read", true);
 
-        //reload policies from DB
+        // Reload the policy from the storage to see the effect.
         e.clearPolicy();
         a.loadPolicy(e.getModel());
+        // The policy has a new rule: {"cathy", "data1", "read"}.
         testEnforce(e, "cathy", "data1", "read", true);
 
-        //remove a policy
+        // Remove the added rule.
         e.removePolicy("cathy", "data1", "read");
         testEnforce(e, "cathy", "data1", "read", false);
 
-        //reload policies from DB
+        // Reload the policy from the storage to see the effect.
         e.clearPolicy();
         a.loadPolicy(e.getModel());
         testEnforce(e, "cathy", "data1", "read", false);
