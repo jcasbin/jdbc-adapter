@@ -19,6 +19,7 @@ Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E1922
 - DB2
 - Sybase
 - Microsoft SQL Server
+- H2
 
 ## Installation
 
