@@ -104,13 +104,16 @@ public class JDBCAdapter implements Adapter {
     private void open() {
         try {
             Class.forName(driver);
-
+            String param1 = "";
+            if (!driver.equalsIgnoreCase("org.h2.Driver")) {
+                param1 = "?rewriteBatchedStatements=true";
+            }
             if (dbSpecified) {
-                conn = DriverManager.getConnection(url + "?rewriteBatchedStatements=true", username, password);
+                conn = DriverManager.getConnection(url + param1, username, password);
             } else {
                 createDatabase();
 
-                conn = DriverManager.getConnection(url + "casbin" + "?rewriteBatchedStatements=true", username, password);
+                conn = DriverManager.getConnection(url + "casbin" + param1, username, password);
             }
 
         } catch (ClassNotFoundException | SQLException e) {

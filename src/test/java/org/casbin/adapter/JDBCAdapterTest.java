@@ -24,6 +24,9 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class JDBCAdapterTest {
+
+    private final JDBCAdapter defaultConnection = new JDBCAdapter("org.h2.Driver", "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=Oracle", "", "",true);
+
     static void testEnforce(Enforcer e, String sub, Object obj, String act, boolean res) {
         assertEquals(res, e.enforce(sub, obj, act));
     }
@@ -43,7 +46,7 @@ public class JDBCAdapterTest {
         // so we need to load the policy from the file adapter (.CSV) first.
         Enforcer e = new Enforcer("examples/rbac_model.conf", "examples/rbac_policy.csv");
 
-        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        JDBCAdapter a = defaultConnection;
         // This is a trick to save the current policy to the DB.
         // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
         // The current policy means the policy in the jCasbin enforcer (aka in memory).
@@ -67,7 +70,7 @@ public class JDBCAdapterTest {
         // Now the DB has policy, so we can provide a normal use case.
         // Create an adapter and an enforcer.
         // new Enforcer() will load the policy automatically.
-        a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        a = defaultConnection;
         e = new Enforcer("examples/rbac_model.conf", a);
         testGetPolicy(e, asList(
                 asList("alice", "data1", "read"),
@@ -78,7 +81,7 @@ public class JDBCAdapterTest {
 
     @Test
     public void testAddAndRemovePolicy() {
-        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        JDBCAdapter a = defaultConnection;
         Enforcer e = new Enforcer("examples/rbac_model.conf", a);
         testEnforce(e, "cathy", "data1", "read", false);
 
