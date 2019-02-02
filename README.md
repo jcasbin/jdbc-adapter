@@ -28,7 +28,7 @@ For Maven:
 <dependency>
   <groupId>org.casbin</groupId>
   <artifactId>jdbc-adapter</artifactId>
-  <version>1.1.2-FIX</version>
+  <version>1.1.3</version>
 </dependency>
 ```
 
