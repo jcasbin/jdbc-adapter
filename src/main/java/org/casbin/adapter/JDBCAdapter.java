@@ -115,7 +115,12 @@ public class JDBCAdapter implements Adapter {
 
     private String getUrl(){
         if (getDataSource().equals(mysql)){
-            return url + "?rewriteBatchedStatements=true&autoReconnect=true";
+            if (url.contains("?")){
+                url = url + "&";
+            }else {
+                url = url + "?";
+            }
+            return url + "rewriteBatchedStatements=true&autoReconnect=true";
         }
         return url;
     }
