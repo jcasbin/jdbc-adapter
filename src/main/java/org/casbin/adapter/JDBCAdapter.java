@@ -43,6 +43,8 @@ public class JDBCAdapter implements Adapter {
     private String username;
     private String password;
     private boolean dbSpecified;
+    private static final String oracle = "oracle";
+    private static final String mysql = "mysql";
 
     private Connection conn = null;
 
@@ -101,15 +103,30 @@ public class JDBCAdapter implements Adapter {
         }
     }
 
+    private String getDataSource(){
+        if (url.contains(oracle)){
+            return oracle;
+        }
+        if (url.contains(mysql)){
+            return mysql;
+        }
+        return mysql;
+    }
+
+    private String getUrl(){
+        if (getDataSource().equals(mysql)){
+            return url + "?rewriteBatchedStatements=true&autoReconnect=true";
+        }
+        return url;
+    }
+
     private void open() {
         try {
             Class.forName(driver);
-
             if (dbSpecified) {
-                conn = DriverManager.getConnection(url + "?rewriteBatchedStatements=true&autoReconnect=true", username, password);
+                conn = DriverManager.getConnection(getUrl(), username, password);
             } else {
                 createDatabase();
-
                 conn = DriverManager.getConnection(url + "casbin" + "?rewriteBatchedStatements=true&autoReconnect=true", username, password);
             }
 
@@ -140,6 +157,27 @@ public class JDBCAdapter implements Adapter {
                     " v3 VARCHAR(100), " +
                     " v4 VARCHAR(100), " +
                     " v5 VARCHAR(100))";
+            if (getDataSource().equals(oracle)){
+                sql = "declare " +
+                        "nCount NUMBER;" +
+                        "v_sql LONG;" +
+                        "begin " +
+                        "SELECT count(*) into nCount FROM USER_TABLES where table_name = 'CASBIN_RULE';" +
+                        "IF(nCount <= 0) " +
+                        "THEN " +
+                        "v_sql:='" +
+                        "CREATE TABLE CASBIN_RULE " +
+                        "                    (ptype VARCHAR(100) not NULL, " +
+                        "                     v0 VARCHAR(100), " +
+                        "                     v1 VARCHAR(100), " +
+                        "                     v2 VARCHAR(100), " +
+                        "                     v3 VARCHAR(100)," +
+                        "                     v4 VARCHAR(100)," +
+                        "                     v5 VARCHAR(100))';" +
+                        "execute immediate v_sql;" +
+                        "END IF;" +
+                        "end;";
+            }
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -150,6 +188,19 @@ public class JDBCAdapter implements Adapter {
         try {
             Statement stmt = conn.createStatement();
             String sql = "DROP TABLE IF EXISTS casbin_rule";
+            if (getDataSource().equals(oracle)){
+                sql = "declare " +
+                        "nCount NUMBER;" +
+                        "v_sql LONG;" +
+                        "begin " +
+                        "SELECT count(*) into nCount FROM dba_tables where table_name = 'CASBIN_RULE';" +
+                        "IF(nCount >= 1) " +
+                        "THEN " +
+                        "v_sql:='drop table CASBIN_RULE';" +
+                        "execute immediate v_sql;" +
+                        "END IF;" +
+                        "end;";
+            }
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
             e.printStackTrace();
