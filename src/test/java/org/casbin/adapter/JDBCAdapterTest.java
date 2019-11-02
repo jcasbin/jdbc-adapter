@@ -78,6 +78,13 @@ public class JDBCAdapterTest {
         // Now the DB has policy, so we can provide a normal use case.
         // Create an adapter and an enforcer.
         // new Enforcer() will load the policy automatically.
+        a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        e = new Enforcer("examples/rbac_model.conf", a);
+        testGetPolicy(e, asList(
+                asList("alice", "data1", "read"),
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
         a = new JDBCAdapter(genDataSource());
         e = new Enforcer("examples/rbac_model.conf", a);
         testGetPolicy(e, asList(
