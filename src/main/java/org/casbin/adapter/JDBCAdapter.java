@@ -96,6 +96,7 @@ public class JDBCAdapter implements Adapter {
     public JDBCAdapter(DataSource dataSource) {
         try {
             this.conn = dataSource.getConnection();
+            this.url = this.conn.getMetaData().getURL();
             createTable();
         } catch (SQLException e) {
             e.printStackTrace();

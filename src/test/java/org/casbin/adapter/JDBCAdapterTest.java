@@ -14,10 +14,12 @@
 
 package org.casbin.adapter;
 
+import com.mysql.cj.jdbc.MysqlDataSource;
 import org.casbin.jcasbin.main.Enforcer;
 import org.casbin.jcasbin.util.Util;
 import org.junit.Test;
 
+import javax.sql.DataSource;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -35,6 +37,15 @@ public class JDBCAdapterTest {
         if (!Util.array2DEquals(res, myRes)) {
             fail("Policy: " + myRes + ", supposed to be " + res);
         }
+    }
+
+    private DataSource genDataSource() {
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/casbin");
+        dataSource.setDatabaseName("casbin");
+        dataSource.setUser("root");
+        dataSource.setPassword("");
+        return dataSource;
     }
 
     @Test
@@ -67,7 +78,7 @@ public class JDBCAdapterTest {
         // Now the DB has policy, so we can provide a normal use case.
         // Create an adapter and an enforcer.
         // new Enforcer() will load the policy automatically.
-        a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "");
+        a = new JDBCAdapter(genDataSource());
         e = new Enforcer("examples/rbac_model.conf", a);
         testGetPolicy(e, asList(
                 asList("alice", "data1", "read"),
