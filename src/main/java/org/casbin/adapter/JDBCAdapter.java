@@ -20,6 +20,7 @@ import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.Helper;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 
@@ -85,6 +86,20 @@ public class JDBCAdapter implements Adapter {
         this.dbSpecified = dbSpecified;
 
         open();
+    }
+
+    /**
+     * JDBCAdapter is the constructor for JDBCAdapter, will not try to create database.
+     *
+     * @param dataSource the JDBC DataSource.
+     */
+    public JDBCAdapter(DataSource dataSource) {
+        try {
+            this.conn = dataSource.getConnection();
+            createTable();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void finalize() {
