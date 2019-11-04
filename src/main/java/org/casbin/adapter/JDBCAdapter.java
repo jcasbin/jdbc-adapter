@@ -89,18 +89,14 @@ public class JDBCAdapter implements Adapter {
     }
 
     /**
-     * JDBCAdapter is the constructor for JDBCAdapter, will not try to create database.
+     * The constructor for JDBCAdapter, will not try to create database.
      *
      * @param dataSource the JDBC DataSource.
      */
-    public JDBCAdapter(DataSource dataSource) {
-        try {
-            this.conn = dataSource.getConnection();
-            this.url = this.conn.getMetaData().getURL();
-            createTable();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    public JDBCAdapter(DataSource dataSource) throws SQLException {
+    	this.conn = dataSource.getConnection();
+        this.url = this.conn.getMetaData().getURL();
+        createTable();
     }
 
     public void finalize() {

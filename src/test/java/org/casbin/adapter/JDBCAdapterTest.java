@@ -20,6 +20,7 @@ import org.casbin.jcasbin.util.Util;
 import org.junit.Test;
 
 import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -37,15 +38,6 @@ public class JDBCAdapterTest {
         if (!Util.array2DEquals(res, myRes)) {
             fail("Policy: " + myRes + ", supposed to be " + res);
         }
-    }
-
-    private DataSource genDataSource() {
-        MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setUrl("jdbc:mysql://localhost:3306/casbin");
-        dataSource.setDatabaseName("casbin");
-        dataSource.setUser("root");
-        dataSource.setPassword("");
-        return dataSource;
     }
 
     @Test
@@ -85,13 +77,6 @@ public class JDBCAdapterTest {
                 asList("bob", "data2", "write"),
                 asList("data2_admin", "data2", "read"),
                 asList("data2_admin", "data2", "write")));
-        a = new JDBCAdapter(genDataSource());
-        e = new Enforcer("examples/rbac_model.conf", a);
-        testGetPolicy(e, asList(
-                asList("alice", "data1", "read"),
-                asList("bob", "data2", "write"),
-                asList("data2_admin", "data2", "read"),
-                asList("data2_admin", "data2", "write")));
     }
 
     @Test
@@ -123,5 +108,24 @@ public class JDBCAdapterTest {
         e.clearPolicy();
         a.loadPolicy(e.getModel());
         testEnforce(e, "cathy", "data1", "read", false);
+    }
+
+    @Test
+    public void testConstructorWithDataSource() throws SQLException {
+        JDBCAdapter a = new JDBCAdapter(genDataSource());
+        Enforcer e = new Enforcer("examples/rbac_model.conf", a);
+		e.clearPolicy();
+        testEnforce(e, "cathy", "data1", "read", false);
+        e.addPolicy("cathy", "data1", "read");
+        testEnforce(e, "cathy", "data1", "read", true);
+    }
+
+    private DataSource genDataSource() {
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/casbin");
+        dataSource.setDatabaseName("casbin");
+        dataSource.setUser("root");
+        dataSource.setPassword("");
+        return dataSource;
     }
 }
