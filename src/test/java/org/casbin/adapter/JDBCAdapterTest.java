@@ -14,10 +14,13 @@
 
 package org.casbin.adapter;
 
+import com.mysql.cj.jdbc.MysqlDataSource;
 import org.casbin.jcasbin.main.Enforcer;
 import org.casbin.jcasbin.util.Util;
 import org.junit.Test;
 
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -105,5 +108,24 @@ public class JDBCAdapterTest {
         e.clearPolicy();
         a.loadPolicy(e.getModel());
         testEnforce(e, "cathy", "data1", "read", false);
+    }
+
+    @Test
+    public void testConstructorWithDataSource() throws SQLException {
+        JDBCAdapter a = new JDBCAdapter(genDataSource());
+        Enforcer e = new Enforcer("examples/rbac_model.conf", a);
+		e.clearPolicy();
+        testEnforce(e, "cathy", "data1", "read", false);
+        e.addPolicy("cathy", "data1", "read");
+        testEnforce(e, "cathy", "data1", "read", true);
+    }
+
+    private DataSource genDataSource() {
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/casbin");
+        dataSource.setDatabaseName("casbin");
+        dataSource.setUser("root");
+        dataSource.setPassword("");
+        return dataSource;
     }
 }
