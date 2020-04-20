@@ -179,6 +179,9 @@ public class JDBCAdapter implements Adapter {
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
 
+            final int batchSize = 1000;
+            int count = 0;
+
             try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
                 statement.execute(cleanSql);
 
@@ -196,7 +199,11 @@ public class JDBCAdapter implements Adapter {
                         ps.setString(5, line.v3);
                         ps.setString(6, line.v4);
                         ps.setString(7, line.v5);
+
                         ps.addBatch();
+                        if (++count % batchSize == 0) {
+                            ps.executeBatch();
+                        }
                     }
                 }
 
@@ -214,9 +221,14 @@ public class JDBCAdapter implements Adapter {
                         ps.setString(5, line.v3);
                         ps.setString(6, line.v4);
                         ps.setString(7, line.v5);
+
                         ps.addBatch();
+                        if (++count % batchSize == 0) {
+                            ps.executeBatch();
+                        }
                     }
                 }
+
                 ps.executeBatch();
 
                 conn.commit();
