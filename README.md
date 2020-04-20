@@ -20,6 +20,14 @@ Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E1922
 - Sybase
 - Microsoft SQL Server
 
+## Verified Database
+
+- MySQL
+- PostgreSQL
+- Microsoft SQL Server
+
+We need more developers to help us verify. 
+
 ## Installation
 
 For Maven:
@@ -46,7 +54,7 @@ public class Test {
         // Initialize a JDBC adapter and use it in a jCasbin enforcer:
         // The adapter will use the MySQL database named "casbin".
         // If it doesn't exist, the adapter will create it automatically.
-        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "123"); // Your driver and URL. 
+        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/db_name", "root", "123"); // Your driver and URL. 
 
         // Or you can use an existing DB "abc" like this:
         // The adapter will use the table named "casbin_rule".
