@@ -39,53 +39,18 @@ class CasbinRule {
  * It can load policy from JDBC supported database or save policy to it.
  */
 public class JDBCAdapter implements Adapter {
-    private String driver;
-    private String url;
-    private String username;
-    private String password;
-    private boolean dbSpecified;
-    private static final String oracle = "oracle";
-    private static final String mysql = "mysql";
-
-    private Connection conn = null;
+    private DataSource dataSource = null;
 
     /**
      * JDBCAdapter is the constructor for JDBCAdapter.
      *
-     * @param driver the JDBC driver, like "com.mysql.cj.jdbc.Driver".
-     * @param url the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
+     * @param driver   the JDBC driver, like "com.mysql.cj.jdbc.Driver".
+     * @param url      the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
      * @param username the username of the database.
      * @param password the password of the database.
      */
-    public JDBCAdapter(String driver, String url, String username, String password) {
-        this.driver = driver;
-        this.url = url;
-        this.username = username;
-        this.password = password;
-        this.dbSpecified = false;
-
-        open();
-    }
-
-    /**
-     * JDBCAdapter is the constructor for JDBCAdapter.
-     *
-     * @param driver the JDBC driver, like "com.mysql.cj.jdbc.Driver".
-     * @param url the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
-     * @param username the username of the database.
-     * @param password the password of the database.
-     * @param dbSpecified whether you have specified an existing DB in url.
-     * If dbSpecified == true, you need to make sure the DB in url exists.
-     * If dbSpecified == false, the adapter will automatically create a DB named "casbin".
-     */
-    public JDBCAdapter(String driver, String url, String username, String password, boolean dbSpecified) {
-        this.driver = driver;
-        this.url = url;
-        this.username = username;
-        this.password = password;
-        this.dbSpecified = dbSpecified;
-
-        open();
+    public JDBCAdapter(String driver, String url, String username, String password) throws Exception {
+        this(new JDBCDataSource(driver, url, username, password));
     }
 
     /**
@@ -93,129 +58,26 @@ public class JDBCAdapter implements Adapter {
      *
      * @param dataSource the JDBC DataSource.
      */
-    public JDBCAdapter(DataSource dataSource) throws SQLException {
-    	this.conn = dataSource.getConnection();
-        this.url = this.conn.getMetaData().getURL();
-        createTable();
+    public JDBCAdapter(DataSource dataSource) throws Exception {
+        this.dataSource = dataSource;
+        migrate();
     }
 
-    public void finalize() {
-        close();
-    }
+    private void migrate() throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+            String productName = conn.getMetaData().getDatabaseProductName();
 
-    private void createDatabase() {
-        try {
-            conn = DriverManager.getConnection(url, username, password);
-
-            Statement stmt = conn.createStatement();
-            String sql = "CREATE DATABASE IF NOT EXISTS casbin";
-            stmt.executeUpdate(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String getDataSource(){
-        if (url.contains(oracle)){
-            return oracle;
-        }
-        if (url.contains(mysql)){
-            return mysql;
-        }
-        return mysql;
-    }
-
-    private String getUrl(){
-        if (getDataSource().equals(mysql)){
-            return url + "?rewriteBatchedStatements=true&autoReconnect=true";
-        }
-        return url;
-    }
-
-    private void open() {
-        try {
-            Class.forName(driver);
-            if (dbSpecified) {
-                conn = DriverManager.getConnection(getUrl(), username, password);
-            } else {
-                createDatabase();
-                conn = DriverManager.getConnection(url + "casbin" + "?rewriteBatchedStatements=true&autoReconnect=true", username, password);
+            switch (productName) {
+                case "Oracle": {
+                    sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; exception when others then if SQLCODE = -955 then null; else raise; end if; end;";
+                }
+                case "Microsoft SQL Server": {
+                    sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+                }
             }
 
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
-        }
-
-        createTable();
-    }
-
-    private void close() {
-        try {
-            conn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        conn = null;
-    }
-
-    private void createTable() {
-        try {
-            Statement stmt = conn.createStatement();
-            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule " +
-                    "(ptype VARCHAR(100) not NULL, " +
-                    " v0 VARCHAR(100), " +
-                    " v1 VARCHAR(100), " +
-                    " v2 VARCHAR(100), " +
-                    " v3 VARCHAR(100), " +
-                    " v4 VARCHAR(100), " +
-                    " v5 VARCHAR(100))";
-            if (getDataSource().equals(oracle)){
-                sql = "declare " +
-                        "nCount NUMBER;" +
-                        "v_sql LONG;" +
-                        "begin " +
-                        "SELECT count(*) into nCount FROM USER_TABLES where table_name = 'CASBIN_RULE';" +
-                        "IF(nCount <= 0) " +
-                        "THEN " +
-                        "v_sql:='" +
-                        "CREATE TABLE CASBIN_RULE " +
-                        "                    (ptype VARCHAR(100) not NULL, " +
-                        "                     v0 VARCHAR(100), " +
-                        "                     v1 VARCHAR(100), " +
-                        "                     v2 VARCHAR(100), " +
-                        "                     v3 VARCHAR(100)," +
-                        "                     v4 VARCHAR(100)," +
-                        "                     v5 VARCHAR(100))';" +
-                        "execute immediate v_sql;" +
-                        "END IF;" +
-                        "end;";
-            }
             stmt.executeUpdate(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void dropTable() {
-        try {
-            Statement stmt = conn.createStatement();
-            String sql = "DROP TABLE IF EXISTS casbin_rule";
-            if (getDataSource().equals(oracle)){
-                sql = "declare " +
-                        "nCount NUMBER;" +
-                        "v_sql LONG;" +
-                        "begin " +
-                        "SELECT count(*) into nCount FROM dba_tables where table_name = 'CASBIN_RULE';" +
-                        "IF(nCount >= 1) " +
-                        "THEN " +
-                        "v_sql:='drop table CASBIN_RULE';" +
-                        "execute immediate v_sql;" +
-                        "END IF;" +
-                        "end;";
-            }
-            stmt.executeUpdate(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
@@ -248,7 +110,7 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void loadPolicy(Model model) {
-        try {
+        try (Connection conn = dataSource.getConnection()) {
             Statement stmt = conn.createStatement();
             ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
             ResultSetMetaData rData = rSet.getMetaData();
@@ -276,6 +138,7 @@ public class JDBCAdapter implements Adapter {
             rSet.close();
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new Error(e);
         }
     }
 
@@ -310,54 +173,64 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void savePolicy(Model model) {
-        dropTable();
-        createTable();
+        String cleanSql = "delete from casbin_rule";
+        String addSql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
 
-        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(sql);
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
 
+            try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
+                statement.execute(cleanSql);
 
-        for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
-            String ptype = entry.getKey();
-            Assertion ast = entry.getValue();
+                for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
+                    String ptype = entry.getKey();
+                    Assertion ast = entry.getValue();
 
-            for (List<String> rule : ast.policy) {
-                CasbinRule line = savePolicyLine(ptype, rule);
+                    for (List<String> rule : ast.policy) {
+                        CasbinRule line = savePolicyLine(ptype, rule);
 
-                ps.setString(1, line.ptype);
-                ps.setString(2, line.v0);
-                ps.setString(3, line.v1);
-                ps.setString(4, line.v2);
-                ps.setString(5, line.v3);
-                ps.setString(6, line.v4);
-                ps.setString(7, line.v5);
-                ps.addBatch();
+                        ps.setString(1, line.ptype);
+                        ps.setString(2, line.v0);
+                        ps.setString(3, line.v1);
+                        ps.setString(4, line.v2);
+                        ps.setString(5, line.v3);
+                        ps.setString(6, line.v4);
+                        ps.setString(7, line.v5);
+                        ps.addBatch();
+                    }
+                }
+
+                for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
+                    String ptype = entry.getKey();
+                    Assertion ast = entry.getValue();
+
+                    for (List<String> rule : ast.policy) {
+                        CasbinRule line = savePolicyLine(ptype, rule);
+
+                        ps.setString(1, line.ptype);
+                        ps.setString(2, line.v0);
+                        ps.setString(3, line.v1);
+                        ps.setString(4, line.v2);
+                        ps.setString(5, line.v3);
+                        ps.setString(6, line.v4);
+                        ps.setString(7, line.v5);
+                        ps.addBatch();
+                    }
+                }
+                ps.executeBatch();
+
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+
+                e.printStackTrace();
+                throw new Error(e);
+            } finally {
+                conn.setAutoCommit(true);
             }
-        }
-
-        for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
-            String ptype = entry.getKey();
-            Assertion ast = entry.getValue();
-
-            for (List<String> rule : ast.policy) {
-                CasbinRule line = savePolicyLine(ptype, rule);
-
-                ps.setString(1, line.ptype);
-                ps.setString(2, line.v0);
-                ps.setString(3, line.v1);
-                ps.setString(4, line.v2);
-                ps.setString(5, line.v3);
-                ps.setString(6, line.v4);
-                ps.setString(7, line.v5);
-                ps.addBatch();
-            }
-        }
-
-        ps.executeBatch();
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new Error(e);
         }
     }
 
@@ -366,12 +239,11 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void addPolicy(String sec, String ptype, List<String> rule) {
-        if(CollectionUtils.isEmpty(rule)) return;
-        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(sql);
+        if (CollectionUtils.isEmpty(rule)) return;
 
+        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             CasbinRule line = savePolicyLine(ptype, rule);
 
             ps.setString(1, line.ptype);
@@ -386,8 +258,7 @@ public class JDBCAdapter implements Adapter {
             ps.executeBatch();
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
-            close(ps);
+            throw new Error(e);
         }
     }
 
@@ -396,7 +267,7 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void removePolicy(String sec, String ptype, List<String> rule) {
-        if(CollectionUtils.isEmpty(rule)) return;
+        if (CollectionUtils.isEmpty(rule)) return;
         removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
     }
 
@@ -405,21 +276,19 @@ public class JDBCAdapter implements Adapter {
      */
     @Override
     public void removeFilteredPolicy(String sec, String ptype, int fieldIndex, String... fieldValues) {
-        List<String> values = Optional.ofNullable(Arrays.asList(fieldValues)).orElse(new ArrayList<>());
-        if(CollectionUtils.isEmpty(values)) return;
+        List<String> values = Optional.of(Arrays.asList(fieldValues)).orElse(new ArrayList<>());
+        if (CollectionUtils.isEmpty(values)) return;
         String sql = "DELETE FROM casbin_rule WHERE ptype = ?";
         int columnIndex = fieldIndex;
         for (int i = 0; i < values.size(); i++) {
             sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
             columnIndex++;
         }
-        PreparedStatement ps = null;
 
-        try {
-            ps = conn.prepareStatement(sql);
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ptype);
             for (int j = 0; j < values.size(); j++) {
-                ps.setString(j+2, values.get(j));
+                ps.setString(j + 2, values.get(j));
             }
 
             ps.addBatch();
@@ -427,16 +296,7 @@ public class JDBCAdapter implements Adapter {
             ps.executeBatch();
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
-            close(ps);
-        }
-    }
-
-    private void close(PreparedStatement ps) {
-        try {
-            ps.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            throw new Error(e);
         }
     }
 }
