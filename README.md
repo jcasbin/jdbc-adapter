@@ -36,7 +36,7 @@ For Maven:
 <dependency>
   <groupId>org.casbin</groupId>
   <artifactId>jdbc-adapter</artifactId>
-  <version>1.1.4</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
@@ -48,23 +48,29 @@ package com.company.test;
 import org.casbin.jcasbin.main.Enforcer;
 import org.casbin.jcasbin.util.Util;
 import org.casbin.adapter.JDBCAdapter;
+import com.mysql.cj.jdbc.MysqlDataSource;
 
 public class Test {
     public static void main() {
-        // Initialize a JDBC adapter and use it in a jCasbin enforcer:
-        // The adapter will use the MySQL database named "casbin".
-        // If it doesn't exist, the adapter will create it automatically.
-        JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/db_name", "root", "123"); // Your driver and URL. 
+        String driver = "com.mysql.cj.jdbc.Driver";
+        String url = "jdbc:mysql://localhost:3306/db_name";
+        String username = "root";
+        String password = "123456";
 
-        // Or you can use an existing DB "abc" like this:
         // The adapter will use the table named "casbin_rule".
-        // If it doesn't exist, the adapter will create it automatically.
-        // JDBCAdapter a = new JDBCAdapter("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/casbin", "root", "123", true);
+        // Use driver, url, username and password to initialize a JDBC adapter.
+        JDBCAdapter a = new JDBCAdapter(driver, url, username, password); 
+        
+        // Recommend use DataSource to initialize a JDBC adapter.
+        // Implementer of DataSource interface, such as hikari, c3p0, durid, etc.
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setURL(url);
+        dataSource.setUser(username);
+        dataSource.setPassword(password);
+
+        a = JDBCAdapter(dataSource);        
 
         Enforcer e = new Enforcer("examples/rbac_model.conf", a);
-
-        // Load the policy from DB.
-        e.loadPolicy();
 
         // Check the permission.
         e.enforce("alice", "data1", "read");
