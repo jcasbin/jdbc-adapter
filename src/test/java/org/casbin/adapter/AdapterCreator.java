@@ -27,9 +27,9 @@ public interface AdapterCreator {
 
 
 class MySQLAdapterCreator implements AdapterCreator {
-    private String url = "jdbc:mysql://localhost:3306/casbin";
+    private String url = "jdbc:mysql://localhost:3306/casbin?serverTimezone=GMT%2B8";
     private String username = "root";
-    private String password = "";
+    private String password = "yourPasswordHere";
     private String driver = "com.mysql.cj.jdbc.Driver";
 
     @Override
@@ -51,8 +51,8 @@ class MySQLAdapterCreator implements AdapterCreator {
 
 class OracleAdapterCreator implements AdapterCreator {
     private String url = "jdbc:oracle:thin:@//localhost:1521/orcl";
-    private String username = "system";
-    private String password = "oracle";
+    private String username = "yourUsername";
+    private String password = "yourPasswordHere";
     private String driver = "oracle.jdbc.driver.OracleDriver";
 
     @Override

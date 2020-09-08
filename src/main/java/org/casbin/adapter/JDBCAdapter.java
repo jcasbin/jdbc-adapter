@@ -21,10 +21,12 @@ import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.Helper;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
 class CasbinRule {
+    int id;
     String ptype;
     String v0;
     String v1;
@@ -40,6 +42,8 @@ class CasbinRule {
  */
 public class JDBCAdapter implements Adapter {
     private DataSource dataSource = null;
+    private final int batchSize = 1000;
+    private int size = 0;
 
     /**
      * JDBCAdapter is the constructor for JDBCAdapter.
@@ -65,16 +69,16 @@ public class JDBCAdapter implements Adapter {
 
     private void migrate() throws SQLException {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
             String productName = conn.getMetaData().getDatabaseProductName();
 
             switch (productName) {
-                case "Oracle": {
-                    sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; exception when others then if SQLCODE = -955 then null; else raise; end if; end;";
-                }
-                case "Microsoft SQL Server": {
-                    sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
-                }
+                case "Oracle":
+                    sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(id NUMBER(5, 0) not NULL, ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; exception when others then if SQLCODE = -955 then null; else raise; end if; end;";
+                    break;
+                case "Microsoft SQL Server":
+                    sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(id int NOT NULL, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+                    break;
             }
 
             stmt.executeUpdate(sql);
@@ -114,26 +118,41 @@ public class JDBCAdapter implements Adapter {
             Statement stmt = conn.createStatement();
             ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
             ResultSetMetaData rData = rSet.getMetaData();
+            this.size = 0;
             while (rSet.next()) {
                 CasbinRule line = new CasbinRule();
                 for (int i = 1; i <= rData.getColumnCount(); i++) {
                     if (i == 1) {
-                        line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        Object id = rSet.getObject(i);
+                        if (id != null) {
+                            if (id instanceof BigDecimal) {
+                                line.id = ((BigDecimal)id).intValue();
+                            } else if (id instanceof Integer) {
+                                line.id = (int) id;
+                            } else {
+                                line.id = 0;
+                            }
+                        } else {
+                            line.id = 0;
+                        }
                     } else if (i == 2) {
-                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 3) {
-                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 4) {
-                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 5) {
-                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 6) {
-                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 7) {
+                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                    } else if (i == 8) {
                         line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     }
                 }
                 loadPolicyLine(line, model);
+                this.size++;
             }
             rSet.close();
         } catch (SQLException e) {
@@ -142,9 +161,10 @@ public class JDBCAdapter implements Adapter {
         }
     }
 
-    private CasbinRule savePolicyLine(String ptype, List<String> rule) {
+    private CasbinRule savePolicyLine(String ptype, List<String> rule, int id) {
         CasbinRule line = new CasbinRule();
 
+        line.id = id;
         line.ptype = ptype;
         if (rule.size() > 0) {
             line.v0 = rule.get(0);
@@ -174,31 +194,32 @@ public class JDBCAdapter implements Adapter {
     @Override
     public void savePolicy(Model model) {
         String cleanSql = "delete from casbin_rule";
-        String addSql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+        String addSql = "INSERT INTO casbin_rule (id,ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?,?)";
 
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
 
-            final int batchSize = 1000;
             int count = 0;
 
             try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
                 statement.execute(cleanSql);
-
+                this.size = 0;
                 for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
+                    this.size++;
                     String ptype = entry.getKey();
                     Assertion ast = entry.getValue();
 
                     for (List<String> rule : ast.policy) {
-                        CasbinRule line = savePolicyLine(ptype, rule);
+                        CasbinRule line = savePolicyLine(ptype, rule, this.size);
 
-                        ps.setString(1, line.ptype);
-                        ps.setString(2, line.v0);
-                        ps.setString(3, line.v1);
-                        ps.setString(4, line.v2);
-                        ps.setString(5, line.v3);
-                        ps.setString(6, line.v4);
-                        ps.setString(7, line.v5);
+                        ps.setInt(1, line.id);
+                        ps.setString(2, line.ptype);
+                        ps.setString(3, line.v0);
+                        ps.setString(4, line.v1);
+                        ps.setString(5, line.v2);
+                        ps.setString(6, line.v3);
+                        ps.setString(7, line.v4);
+                        ps.setString(8, line.v5);
 
                         ps.addBatch();
                         if (++count % batchSize == 0) {
@@ -208,19 +229,21 @@ public class JDBCAdapter implements Adapter {
                 }
 
                 for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
+                    this.size++;
                     String ptype = entry.getKey();
                     Assertion ast = entry.getValue();
 
                     for (List<String> rule : ast.policy) {
-                        CasbinRule line = savePolicyLine(ptype, rule);
+                        CasbinRule line = savePolicyLine(ptype, rule, this.size);
 
-                        ps.setString(1, line.ptype);
-                        ps.setString(2, line.v0);
-                        ps.setString(3, line.v1);
-                        ps.setString(4, line.v2);
-                        ps.setString(5, line.v3);
-                        ps.setString(6, line.v4);
-                        ps.setString(7, line.v5);
+                        ps.setInt(1, line.id);
+                        ps.setString(2, line.ptype);
+                        ps.setString(3, line.v0);
+                        ps.setString(4, line.v1);
+                        ps.setString(5, line.v2);
+                        ps.setString(6, line.v3);
+                        ps.setString(7, line.v4);
+                        ps.setString(8, line.v5);
 
                         ps.addBatch();
                         if (++count % batchSize == 0) {
@@ -253,18 +276,19 @@ public class JDBCAdapter implements Adapter {
     public void addPolicy(String sec, String ptype, List<String> rule) {
         if (CollectionUtils.isEmpty(rule)) return;
 
-        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO casbin_rule (id,ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?,?)";
 
         try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            CasbinRule line = savePolicyLine(ptype, rule);
+            CasbinRule line = savePolicyLine(ptype, rule, ++this.size);
 
-            ps.setString(1, line.ptype);
-            ps.setString(2, line.v0);
-            ps.setString(3, line.v1);
-            ps.setString(4, line.v2);
-            ps.setString(5, line.v3);
-            ps.setString(6, line.v4);
-            ps.setString(7, line.v5);
+            ps.setInt(1, line.id);
+            ps.setString(2, line.ptype);
+            ps.setString(3, line.v0);
+            ps.setString(4, line.v1);
+            ps.setString(5, line.v2);
+            ps.setString(6, line.v3);
+            ps.setString(7, line.v4);
+            ps.setString(8, line.v5);
             ps.addBatch();
 
             ps.executeBatch();
@@ -310,5 +334,85 @@ public class JDBCAdapter implements Adapter {
             e.printStackTrace();
             throw new Error(e);
         }
+        reset();
+    }
+
+    private void reset() {
+        String querySql = "SELECT * FROM casbin_rule";
+        String cleanSql = "DELETE FROM casbin_rule";
+        String insertSql = "INSERT INTO casbin_rule (id,ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?,?)";
+        List<CasbinRule> casbinRules = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(querySql)) {
+            ResultSet rs = ps.executeQuery();
+            ResultSetMetaData rData = rs.getMetaData();
+
+            while (rs.next()) {
+                CasbinRule line = new CasbinRule();
+                for (int i = 1; i <= rData.getColumnCount(); i++) {
+                    if (i == 1) {
+                        Object id = rs.getObject(i);
+                        if (id != null) {
+                            if (id instanceof BigDecimal) {
+                                line.id = ((BigDecimal)id).intValue();
+                            } else if (id instanceof Integer) {
+                                line.id = (int) id;
+                            } else {
+                                line.id = 0;
+                            }
+                        } else {
+                            line.id = 0;
+                        }
+                    } else if (i == 2) {
+                        line.ptype = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 3) {
+                        line.v0 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 4) {
+                        line.v1 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 5) {
+                        line.v2 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 6) {
+                        line.v3 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 7) {
+                        line.v4 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    } else if (i == 8) {
+                        line.v5 = rs.getObject(i) == null ? "" : (String) rs.getObject(i);
+                    }
+                }
+                casbinRules.add(line);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new Error(e);
+        }
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(cleanSql)) {
+            ps.executeUpdate();
+            this.size = 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new Error(e);
+        }
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(insertSql)) {
+            for (CasbinRule line : casbinRules) {
+                ps.setInt(1, ++this.size);
+                ps.setString(2, line.ptype);
+                ps.setString(3, line.v0);
+                ps.setString(4, line.v1);
+                ps.setString(5, line.v2);
+                ps.setString(6, line.v3);
+                ps.setString(7, line.v4);
+                ps.setString(8, line.v5);
+                ps.addBatch();
+                if (this.size % batchSize == 0) ps.executeBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new Error(e);
+        }
+    }
+
+    public int getPolicySize() {
+        return size;
     }
 }

@@ -46,6 +46,22 @@ public class JDBCAdapterTest {
     }
 
     @Test
+    public void testOracleAdapter() {
+        List<JDBCAdapter> adapters = new ArrayList<>();
+
+        try {
+            adapters.add(new OracleAdapterCreator().create());
+            adapters.add(new OracleAdapterCreator().createViaDataSource());
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+            return;
+        }
+
+        testAdapter(adapters);
+    }
+
+    @Test
     public void testPgAdapter() {
         List<JDBCAdapter> adapters = new ArrayList<>();
 
