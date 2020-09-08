@@ -44,7 +44,7 @@ public class JDBCAdapterTest {
 
         testAdapter(adapters);
     }
-
+/*
     @Test
     public void testOracleAdapter() {
         List<JDBCAdapter> adapters = new ArrayList<>();
@@ -60,7 +60,7 @@ public class JDBCAdapterTest {
 
         testAdapter(adapters);
     }
-
+*/
     @Test
     public void testPgAdapter() {
         List<JDBCAdapter> adapters = new ArrayList<>();
