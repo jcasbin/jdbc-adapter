@@ -25,11 +25,10 @@ public interface AdapterCreator {
     JDBCAdapter createViaDataSource() throws Exception;
 }
 
-
 class MySQLAdapterCreator implements AdapterCreator {
-    private String url = "jdbc:mysql://localhost:3306/casbin";
-    private String username = "root";
-    private String password = "";
+    private String url = "jdbc:mysql://localhost:3306/casbin?serverTimezone=GMT%2B8";
+    private String username = "casbin_test";
+    private String password = "TEST_casbin";
     private String driver = "com.mysql.cj.jdbc.Driver";
 
     @Override
@@ -47,7 +46,6 @@ class MySQLAdapterCreator implements AdapterCreator {
         return new JDBCAdapter(dataSource);
     }
 }
-
 
 class OracleAdapterCreator implements AdapterCreator {
     private String url = "jdbc:oracle:thin:@//localhost:1521/orcl";
