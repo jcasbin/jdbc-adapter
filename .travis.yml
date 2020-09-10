@@ -20,4 +20,7 @@ services:
 
 before_install:
   - mysql -e 'CREATE DATABASE casbin;'
+  - mysql -e "CREATE USER 'casbin_test'@'localhost' IDENTIFIED BY 'TEST_casbin';"
+  - mysql -e "GRANT ALL ON casbin.* TO 'casbin_test'@'localhost';"
   - psql -c 'CREATE DATABASE casbin;' -U postgres
+  - psql -c "CREATE USER casbin_test WITH PASSWORD 'TEST_casbin';" -U postgres

@@ -21,10 +21,12 @@ import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.Helper;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
 class CasbinRule {
+    int id; //Fields reserved for compatibility with other adapters, and the primary key is automatically incremented.
     String ptype;
     String v0;
     String v1;
@@ -40,6 +42,7 @@ class CasbinRule {
  */
 public class JDBCAdapter implements Adapter {
     private DataSource dataSource = null;
+    private final int batchSize = 1000;
 
     /**
      * JDBCAdapter is the constructor for JDBCAdapter.
@@ -65,19 +68,61 @@ public class JDBCAdapter implements Adapter {
 
     private void migrate() throws SQLException {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+            String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY auto_increment, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
             String productName = conn.getMetaData().getDatabaseProductName();
 
             switch (productName) {
-                case "Oracle": {
-                    sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; exception when others then if SQLCODE = -955 then null; else raise; end if; end;";
-                }
-                case "Microsoft SQL Server": {
-                    sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
-                }
+                case "Oracle":
+                    sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(id NUMBER(5, 0) not NULL primary key, ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; " +
+                            "exception when others then " +
+                            "if SQLCODE = -955 then " +
+                                "null; " +
+                            "else raise; " +
+                            "end if; " +
+                            "end;";
+                    break;
+                case "Microsoft SQL Server":
+                    sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(id int NOT NULL primary key identity(1, 1), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+                    break;
+                case "PostgreSQL":
+                    sql = "CREATE SEQUENCE IF NOT EXISTS CASBIN_SEQUENCE START 1;";
+                    break;
             }
 
             stmt.executeUpdate(sql);
+            if (productName.equals("Oracle")) {
+                sql = "declare " +
+                        "V_NUM number;" +
+                        "BEGIN " +
+                        "V_NUM := 0;  " +
+                        "select count(0) into V_NUM from user_sequences where sequence_name = 'CASBIN_SEQUENCE';" +
+                        "if V_NUM > 0 then " +
+                        "null;" +
+                        "else " +
+                        "execute immediate 'CREATE SEQUENCE casbin_sequence increment by 1 start with 1 nomaxvalue nocycle nocache';" +
+                        "end if;END;";
+                stmt.executeUpdate(sql);
+                sql = "declare " +
+                        "V_NUM number;" +
+                        "BEGIN " +
+                        "V_NUM := 0;" +
+                        "select count(0) into V_NUM from user_triggers where trigger_name = 'CASBIN_ID_AUTOINCREMENT';" +
+                        "if V_NUM > 0 then " +
+                        "null;" +
+                        "else " +
+                        "execute immediate 'create trigger casbin_id_autoincrement before "+
+                        "                        insert on CASBIN_RULE for each row "+
+                        "                        when (new.id is null) "+
+                        "                        begin "+
+                        "                        select casbin_sequence.nextval into:new.id from dual;"+
+                        "                        end;';" +
+                        "end if;" +
+                        "END;";
+                stmt.executeUpdate(sql);
+            } else if (productName.equals("PostgreSQL")) {
+                sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY default nextval('CASBIN_SEQUENCE'::regclass), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+                stmt.executeUpdate(sql);
+            }
         }
     }
 
@@ -117,19 +162,19 @@ public class JDBCAdapter implements Adapter {
             while (rSet.next()) {
                 CasbinRule line = new CasbinRule();
                 for (int i = 1; i <= rData.getColumnCount(); i++) {
-                    if (i == 1) {
+                    if (i == 2) {
                         line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 2) {
-                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 3) {
-                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 4) {
-                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 5) {
-                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 6) {
-                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     } else if (i == 7) {
+                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                    } else if (i == 8) {
                         line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
                     }
                 }
@@ -179,12 +224,10 @@ public class JDBCAdapter implements Adapter {
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
 
-            final int batchSize = 1000;
             int count = 0;
 
             try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
                 statement.execute(cleanSql);
-
                 for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
                     String ptype = entry.getKey();
                     Assertion ast = entry.getValue();
