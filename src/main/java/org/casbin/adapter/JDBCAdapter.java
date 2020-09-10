@@ -84,6 +84,9 @@ public class JDBCAdapter implements Adapter {
                 case "Microsoft SQL Server":
                     sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(id int NOT NULL primary key identity(1, 1), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
                     break;
+                case "PostgreSQL":
+                    sql = "CREATE SEQUENCE IF NOT EXISTS CASBIN_SEQUENCE START 1;";
+                    break;
             }
 
             stmt.executeUpdate(sql);
@@ -115,6 +118,9 @@ public class JDBCAdapter implements Adapter {
                         "                        end;';" +
                         "end if;" +
                         "END;";
+                stmt.executeUpdate(sql);
+            } else if (productName.equals("PostgreSQL")) {
+                sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY default nextval('CASBIN_SEQUENCE'::regclass), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
                 stmt.executeUpdate(sql);
             }
         }
