@@ -22,7 +22,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
 
-
 public class JDBCDataSource implements DataSource {
     private String driver;
     private String url;
@@ -64,7 +63,7 @@ public class JDBCDataSource implements DataSource {
     }
 
     @Override
-    public void setLogWriter(PrintWriter out) throws SQLException {
+    public void setLogWriter(PrintWriter out) throws SQLException{
 
     }
 
