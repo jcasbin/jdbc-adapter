@@ -16,6 +16,7 @@ package org.casbin.adapter;
 
 import org.junit.Test;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +44,14 @@ public class JDBCAdapterTest {
         }
 
         testAdapter(adapters);
+
+        adapters.forEach(adapter -> {
+            try {
+                adapter.close();
+            } catch (SQLException sqlException) {
+                sqlException.printStackTrace();
+            }
+        });
     }
 
     @Test
@@ -59,6 +68,14 @@ public class JDBCAdapterTest {
         }
 
         testAdapter(adapters);
+
+        adapters.forEach(adapter -> {
+            try {
+                adapter.close();
+            } catch (SQLException sqlException) {
+                sqlException.printStackTrace();
+            }
+        });
     }
 
     @Test
@@ -75,5 +92,13 @@ public class JDBCAdapterTest {
         }
 
         testAdapter(adapters);
+
+        adapters.forEach(adapter -> {
+            try {
+                adapter.close();
+            } catch (SQLException sqlException) {
+                sqlException.printStackTrace();
+            }
+        });
     }
 }
