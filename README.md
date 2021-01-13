@@ -36,7 +36,7 @@ For Maven:
 <dependency>
   <groupId>org.casbin</groupId>
   <artifactId>jdbc-adapter</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 ```
 
@@ -81,6 +81,8 @@ public class Test {
 
         // Save the policy back to DB.
         e.savePolicy();
+        // Close the connection.
+        a.close();
     }
 }
 ```
