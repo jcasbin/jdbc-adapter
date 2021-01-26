@@ -36,7 +36,7 @@ For Maven:
 <dependency>
   <groupId>org.casbin</groupId>
   <artifactId>jdbc-adapter</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 ```
 
@@ -45,9 +45,8 @@ For Maven:
 ```java
 package com.company.test;
 
-import org.casbin.jcasbin.main.Enforcer;
-import org.casbin.jcasbin.util.Util;
 import org.casbin.adapter.JDBCAdapter;
+import org.casbin.jcasbin.main.Enforcer;
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 public class Test {
@@ -81,6 +80,8 @@ public class Test {
 
         // Save the policy back to DB.
         e.savePolicy();
+        // Close the connection.
+        a.close();
     }
 }
 ```

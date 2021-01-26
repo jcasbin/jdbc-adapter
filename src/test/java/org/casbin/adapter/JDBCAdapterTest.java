@@ -14,12 +14,18 @@
 
 package org.casbin.adapter;
 
+import org.casbin.jcasbin.exception.CasbinAdapterException;
+import org.casbin.jcasbin.main.Enforcer;
+import org.casbin.jcasbin.persist.file_adapter.FilteredAdapter;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Arrays.asList;
+import static org.casbin.adapter.JDBCAdapterTestSets.*;
 import static org.junit.Assert.fail;
 
 public class JDBCAdapterTest {
@@ -100,5 +106,100 @@ public class JDBCAdapterTest {
                 sqlException.printStackTrace();
             }
         });
+    }
+
+    @Test
+    public void testLoadFilteredPolicyEmptyFilter() throws Exception {
+        JDBCAdapter adapter = new MySQLAdapterCreator().create();
+
+        // Because the DB is empty at first,
+        // so we need to load the policy from the file adapter (.CSV) first.
+        Enforcer e = new Enforcer("examples/rbac_model.conf", "examples/rbac_policy.csv");
+
+        // This is a trick to save the current policy to the DB.
+        // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
+        // The current policy means the policy in the jCasbin enforcer (aka in memory).
+        adapter.savePolicy(e.getModel());
+
+        // Clear the current policy.
+        e.clearPolicy();
+        testGetPolicy(e, asList());
+
+        // Load the policy from DB.
+        adapter.loadFilteredPolicy(e.getModel(), null);
+        testGetPolicy(e, asList(
+                asList("alice", "data1", "read"),
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+
+        // Note: you don't need to look at the above code
+        // if you already have a working DB with policy inside.
+        e = new Enforcer("examples/rbac_model.conf", adapter);
+        testGetPolicy(e, asList(
+                asList("alice", "data1", "read"),
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+
+        adapter.close();
+    }
+
+    @Test
+    public void testLoadFilteredPolicyInvalidFilter() throws Exception {
+        JDBCAdapter adapter = new MySQLAdapterCreator().create();
+        // Because the DB is empty at first,
+        // so we need to load the policy from the file adapter (.CSV) first.
+        Enforcer e = new Enforcer("examples/rbac_model.conf", "examples/rbac_policy.csv");
+
+        // This is a trick to save the current policy to the DB.
+        // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
+        // The current policy means the policy in the jCasbin enforcer (aka in memory).
+        adapter.savePolicy(e.getModel());
+
+        // Clear the current policy.
+        e.clearPolicy();
+        testGetPolicy(e, asList());
+
+        // Load the policy from DB.
+        Assert.assertThrows(CasbinAdapterException.class, () -> adapter.loadFilteredPolicy(e.getModel(), new Object()));
+
+        adapter.close();
+    }
+
+    @Test
+    public void testLoadFilteredPolicy() throws Exception {
+        JDBCAdapter adapter = new MySQLAdapterCreator().create();
+
+        FilteredAdapter.Filter f = new FilteredAdapter.Filter();
+        f.g = new String[]{
+                "", "", "domain1"
+        };
+        f.p = new String[]{
+                "", "domain1"
+        };
+
+        // Because the DB is empty at first,
+        // so we need to load the policy from the file adapter (.CSV) first.
+        Enforcer e = new Enforcer("examples/rbac_with_domains_model.conf", "examples/rbac_with_domains_policy.csv");
+        // This is a trick to save the current policy to the DB.
+        // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
+        // The current policy means the policy in the jCasbin enforcer (aka in memory).
+        adapter.savePolicy(e.getModel());
+
+        testHasPolicy(e, asList("admin", "domain1", "data1", "read"), true);
+        testHasPolicy(e, asList("admin", "domain2", "data2", "read"), true);
+
+        // Clear the current policy.
+        e.clearPolicy();
+        testGetPolicy(e, asList());
+
+        // Load the policy from DB.
+        adapter.loadFilteredPolicy(e.getModel(), f);
+
+        testHasPolicy(e, asList("admin", "domain1", "data1", "read"), true);
+        testHasPolicy(e, asList("admin", "domain2", "data2", "read"), false);
+
+        adapter.close();
     }
 }

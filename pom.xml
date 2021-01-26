@@ -6,7 +6,7 @@
 
     <groupId>org.casbin</groupId>
     <artifactId>jdbc-adapter</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.1</version>
 
     <name>JDBC Adapter for JCasbin</name>
     <description>Load policy from JDBC supported database or save policy to it</description>
@@ -93,7 +93,7 @@
         <dependency>
             <groupId>org.casbin</groupId>
             <artifactId>jcasbin</artifactId>
-            <version>1.1.0</version>
+            <version>1.6.2</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
