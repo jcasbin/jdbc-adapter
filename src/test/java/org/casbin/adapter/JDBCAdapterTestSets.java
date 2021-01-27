@@ -15,7 +15,6 @@
 package org.casbin.adapter;
 
 import org.casbin.jcasbin.main.Enforcer;
-import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.util.Util;
 
 import java.util.List;
@@ -30,12 +29,21 @@ class JDBCAdapterTestSets {
         assertEquals(res, e.enforce(sub, obj, act));
     }
 
-    private static void testGetPolicy(Enforcer e, List<List<String>> res) {
+    public static void testGetPolicy(Enforcer e, List<List<String>> res) {
         List<List<String>> myRes = e.getPolicy();
         Util.logPrint("Policy: " + myRes);
 
         if (!Util.array2DEquals(res, myRes)) {
             fail("Policy: " + myRes + ", supposed to be " + res);
+        }
+    }
+
+    public static void testHasPolicy(Enforcer e, List<String> policy, boolean res) {
+        boolean myRes = e.hasPolicy(policy);
+        Util.logPrint("Has policy " + Util.arrayToString(policy) + ": " + myRes);
+
+        if (res != myRes) {
+            fail("Has policy " + Util.arrayToString(policy) + ": " + myRes + ", supposed to be " + res);
         }
     }
 

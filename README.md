@@ -45,9 +45,8 @@ For Maven:
 ```java
 package com.company.test;
 
-import org.casbin.jcasbin.main.Enforcer;
-import org.casbin.jcasbin.util.Util;
 import org.casbin.adapter.JDBCAdapter;
+import org.casbin.jcasbin.main.Enforcer;
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 public class Test {
