@@ -2,7 +2,7 @@ JDBC Adapter
 ====
 
 [![codebeat badge](https://codebeat.co/badges/df265133-60a0-4ee7-b57d-25fd27273905)](https://codebeat.co/projects/github-com-jcasbin-jdbc-adapter-master)
-[![Build Status](https://travis-ci.org/jcasbin/jdbc-adapter.svg?branch=master)](https://travis-ci.org/jcasbin/jdbc-adapter)
+[![Build Status](https://travis-ci.com/jcasbin/jdbc-adapter.svg?branch=master)](https://travis-ci.com/jcasbin/jdbc-adapter)
 [![Coverage Status](https://coveralls.io/repos/github/jcasbin/jdbc-adapter/badge.svg?branch=master)](https://coveralls.io/github/jcasbin/jdbc-adapter?branch=master)
 [![Javadocs](https://www.javadoc.io/badge/org.casbin/jdbc-adapter.svg)](https://www.javadoc.io/doc/org.casbin/jdbc-adapter)
 [![Maven Central](https://img.shields.io/maven-central/v/org.casbin/jdbc-adapter.svg)](https://mvnrepository.com/artifact/org.casbin/jdbc-adapter/latest)
