@@ -18,6 +18,7 @@ jobs:
         
       postgresql:
         image: postgres
+        ports: [ 1433 ]
         
     runs-on: ubuntu-latest
 
