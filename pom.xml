@@ -20,7 +20,7 @@
 
     <ciManagement>
         <system>Travis CI</system>
-        <url>https://travis-ci.org/jcasbin/jdbc-adapter</url>
+        <url>https://travis-ci.com/jcasbin/jdbc-adapter</url>
     </ciManagement>
 
     <parent>
