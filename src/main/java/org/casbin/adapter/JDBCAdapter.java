@@ -35,7 +35,7 @@ import java.sql.Statement;
  */
 public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
 
-    private boolean isFiltered = true;
+    private boolean isFiltered = false;
 
     /**
      * JDBCAdapter is the constructor for JDBCAdapter.
