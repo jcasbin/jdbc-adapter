@@ -14,16 +14,25 @@
 
 package org.casbin.adapter;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.sql.DataSource;
+
 import org.apache.commons.collections.CollectionUtils;
-import org.casbin.jcasbin.main.CoreEnforcer;
 import org.casbin.jcasbin.model.Assertion;
 import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.Helper;
-
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
 
 class CasbinRule {
     int id; //Fields reserved for compatibility with other adapters, and the primary key is automatically incremented.
@@ -45,6 +54,7 @@ class CasbinRule {
  * It can load policy from JDBC supported database or save policy to it.
  */
 abstract class JDBCBaseAdapter implements Adapter {
+    protected static final int _DEFAULT_CONNECTION_TRIES = 3;
     private DataSource dataSource;
     private final int batchSize = 1000;
     protected Connection conn;
@@ -70,13 +80,50 @@ abstract class JDBCBaseAdapter implements Adapter {
         this.dataSource = dataSource;
         migrate();
     }
+    
+    interface DatabaseTask {
+        void run() throws SQLException;
+    }
+    
+    /**
+     * Utility function for database tasks. 
+     * If the given task throws an SQLException, this function will create a
+     * new {@link Connection} and retry the task, until maxTries attempts have 
+     * been made.
+     * After maxTries unsuccessful attempts, the SQLExeption of the last
+     * attempt is thrown.
+     * @param maxTries
+     * @param task
+     */
+    protected void attemptWithRetries(int maxTries, DatabaseTask task) {
+        int count = 0;
+        while (count < maxTries) {
+            try {
+                task.run();
+                return;
+            }
+            catch (SQLException e) {
+                if (++count >= maxTries) {
+                    e.printStackTrace();
+                    throw new Error(e);
+                }
+                try {
+                    this.conn = this.dataSource.getConnection();
+                } catch (SQLException e1) {
+                    // Cannot connect at all
+                    e1.printStackTrace();
+                    throw new Error(e1);
+                }
+            }
+        }
+    }
 
 
     protected void migrate() throws SQLException {
-        conn = dataSource.getConnection();
-        Statement stmt = conn.createStatement();
+        this.conn = dataSource.getConnection();
+        Statement stmt = this.conn.createStatement();
         String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY auto_increment, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
-        String productName = conn.getMetaData().getDatabaseProductName();
+        String productName = this.conn.getMetaData().getDatabaseProductName();
 
         switch (productName) {
             case "Oracle":
@@ -161,35 +208,34 @@ abstract class JDBCBaseAdapter implements Adapter {
      */
     @Override
     public void loadPolicy(Model model) {
-        try (Statement stmt = conn.createStatement()) {
-            ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
-            ResultSetMetaData rData = rSet.getMetaData();
-            while (rSet.next()) {
-                CasbinRule line = new CasbinRule();
-                for (int i = 1; i <= rData.getColumnCount(); i++) {
-                    if (i == 2) {
-                        line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 3) {
-                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 4) {
-                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 5) {
-                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 6) {
-                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 7) {
-                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 8) {
-                        line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+        attemptWithRetries(_DEFAULT_CONNECTION_TRIES, ()-> {
+            try (Statement stmt = this.conn.createStatement()) {
+                ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
+                ResultSetMetaData rData = rSet.getMetaData();
+                while (rSet.next()) {
+                    CasbinRule line = new CasbinRule();
+                    for (int i = 1; i <= rData.getColumnCount(); i++) {
+                        if (i == 2) {
+                            line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 3) {
+                            line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 4) {
+                            line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 5) {
+                            line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 6) {
+                            line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 7) {
+                            line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 8) {
+                            line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        }
                     }
+                    loadPolicyLine(line, model);
                 }
-                loadPolicyLine(line, model);
+                rSet.close();   
             }
-            rSet.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new Error(e);
-        }
+        });
     }
 
     private CasbinRule savePolicyLine(String ptype, List<String> rule) {
@@ -225,13 +271,12 @@ abstract class JDBCBaseAdapter implements Adapter {
     public void savePolicy(Model model) {
         String cleanSql = "delete from casbin_rule";
         String addSql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
-
-        try {
-            conn.setAutoCommit(false);
+        attemptWithRetries(_DEFAULT_CONNECTION_TRIES, () -> {
+            this.conn.setAutoCommit(false);
 
             int count = 0;
 
-            try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
+            try (Statement statement = this.conn.createStatement(); PreparedStatement ps = this.conn.prepareStatement(addSql)) {
                 statement.execute(cleanSql);
                 for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
                     String ptype = entry.getKey();
@@ -279,19 +324,15 @@ abstract class JDBCBaseAdapter implements Adapter {
 
                 ps.executeBatch();
 
-                conn.commit();
+                this.conn.commit();
             } catch (SQLException e) {
-                conn.rollback();
-
+                this.conn.rollback();
                 e.printStackTrace();
                 throw new Error(e);
             } finally {
-                conn.setAutoCommit(true);
+                this.conn.setAutoCommit(true);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new Error(e);
-        }
+        });
     }
 
     /**
@@ -302,23 +343,21 @@ abstract class JDBCBaseAdapter implements Adapter {
         if (CollectionUtils.isEmpty(rule)) return;
 
         String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
-
-        try(PreparedStatement ps = conn.prepareStatement(sql)) {
-            CasbinRule line = savePolicyLine(ptype, rule);
-
-            ps.setString(1, line.ptype);
-            ps.setString(2, line.v0);
-            ps.setString(3, line.v1);
-            ps.setString(4, line.v2);
-            ps.setString(5, line.v3);
-            ps.setString(6, line.v4);
-            ps.setString(7, line.v5);
-            ps.addBatch();
-            ps.executeBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new Error(e);
-        }
+        attemptWithRetries(_DEFAULT_CONNECTION_TRIES, ()->{
+            try(PreparedStatement ps = this.conn.prepareStatement(sql)) {
+                CasbinRule line = savePolicyLine(ptype, rule);
+    
+                ps.setString(1, line.ptype);
+                ps.setString(2, line.v0);
+                ps.setString(3, line.v1);
+                ps.setString(4, line.v2);
+                ps.setString(5, line.v3);
+                ps.setString(6, line.v4);
+                ps.setString(7, line.v5);
+                ps.addBatch();
+                ps.executeBatch();
+            }
+        });
     }
 
     /**
@@ -337,32 +376,30 @@ abstract class JDBCBaseAdapter implements Adapter {
     public void removeFilteredPolicy(String sec, String ptype, int fieldIndex, String... fieldValues) {
         List<String> values = Optional.of(Arrays.asList(fieldValues)).orElse(new ArrayList<>());
         if (CollectionUtils.isEmpty(values)) return;
-        String sql = "DELETE FROM casbin_rule WHERE ptype = ?";
-        int columnIndex = fieldIndex;
-        for (int i = 0; i < values.size(); i++) {
-            sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
-            columnIndex++;
-        }
-
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, ptype);
-            for (int j = 0; j < values.size(); j++) {
-                ps.setString(j + 2, values.get(j));
+        attemptWithRetries(_DEFAULT_CONNECTION_TRIES, ()->{
+            String sql = "DELETE FROM casbin_rule WHERE ptype = ?";
+            int columnIndex = fieldIndex;
+            for (int i = 0; i < values.size(); i++) {
+                sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
+                columnIndex++;
             }
-
-            ps.addBatch();
-
-            ps.executeBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new Error(e);
-        }
+            try (PreparedStatement ps = this.conn.prepareStatement(sql)) {
+                ps.setString(1, ptype);
+                for (int j = 0; j < values.size(); j++) {
+                    ps.setString(j + 2, values.get(j));
+                }
+    
+                ps.addBatch();
+    
+                ps.executeBatch();
+            }
+        });
     }
 
     /**
      * Close the Connection.
      */
     public void close() throws SQLException {
-        conn.close();
+        this.conn.close();
     }
 }
