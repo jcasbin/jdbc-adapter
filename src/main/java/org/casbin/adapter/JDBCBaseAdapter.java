@@ -79,6 +79,13 @@ abstract class JDBCBaseAdapter implements Adapter {
         String productName = conn.getMetaData().getDatabaseProductName();
 
         switch (productName) {
+            case "MySQL":
+                String hasTableSql = "SHOW TABLES LIKE 'casbin_rule';";
+                ResultSet rs = stmt.executeQuery(hasTableSql);
+                if (rs.next()) {
+                    return;
+                }
+                break;
             case "Oracle":
                 sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(id NUMBER(5, 0) not NULL primary key, ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; " +
                         "exception when others then " +
