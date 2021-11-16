@@ -26,7 +26,7 @@ public interface AdapterCreator {
 }
 
 class MySQLAdapterCreator implements AdapterCreator {
-    private String url = "jdbc:mysql://localhost:3306/casbin?serverTimezone=GMT%2B8";
+    private String url = "jdbc:mysql://127.0.0.1:3306/casbin?serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true";
     private String username = "casbin_test";
     private String password = "TEST_casbin";
     private String driver = "com.mysql.cj.jdbc.Driver";
@@ -71,8 +71,8 @@ class OracleAdapterCreator implements AdapterCreator {
 
 class PgAdapterCreator implements AdapterCreator {
     private String url = "jdbc:postgresql://localhost:5432/casbin";
-    private String username = "postgres";
-    private String password = "";
+    private String username = "casbin_test";
+    private String password = "TEST_casbin";
     private String driver = "org.postgresql.Driver";
 
     @Override
