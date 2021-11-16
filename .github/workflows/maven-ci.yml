@@ -1,0 +1,85 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ROOT_PASSWORD: casbin_test
+          MYSQL_DATABASE: casbin
+          MYSQL_USER: casbin_test
+          MYSQL_PASSWORD: TEST_casbin
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: casbin
+          POSTGRES_USER: casbin_test
+          POSTGRES_PASSWORD: TEST_casbin
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          SA_PASSWORD: 9G3iqmzQDw9zCXII
+          ACCEPT_EULA: Y
+        ports:
+          - 1433:1433
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+
+      - name: Install mssql-tools
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update
+          sudo apt-get install mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bash_profile
+
+      - name: Create database for sqlserver
+        run: sqlcmd -S 127.0.0.1,1433 -U sa -P '9G3iqmzQDw9zCXII' -Q "CREATE DATABASE casbin"
+
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+          server-id: ossrh
+          server-username: OSSRH_JIRA_USERNAME
+          server-password: OSSRH_JIRA_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Build with Maven
+        run: mvn clean test cobertura:cobertura
+
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Sematic Release
+        run: |
+          npm install -g @conveyal/maven-semantic-release semantic-release
+          semantic-release --prepare @conveyal/maven-semantic-release --publish @semantic-release/github,@conveyal/maven-semantic-release --verify-conditions @semantic-release/github,@conveyal/maven-semantic-release --verify-release @conveyal/maven-semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_KEY_NAME: ${{ secrets.GPG_KEY_NAME }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          OSSRH_JIRA_USERNAME: ${{ secrets.OSSRH_JIRA_USERNAME }}
+          OSSRH_JIRA_PASSWORD: ${{ secrets.OSSRH_JIRA_PASSWORD }}
