@@ -14,6 +14,7 @@
 
 package org.casbin.adapter;
 
+import dev.failsafe.Failsafe;
 import org.casbin.jcasbin.exception.CasbinAdapterException;
 import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.FilteredAdapter;
@@ -99,7 +100,11 @@ public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
      * loadFilteredPolicyFile loads only policy rules that match the filter from file.
      */
     private void loadFilteredPolicyFile(Model model, Filter filter, Helper.loadPolicyLineHandler<String, Model> handler) throws CasbinAdapterException {
-        try (Statement stmt = conn.createStatement()) {
+        Failsafe.with(retryPolicy).run(ctx -> {
+            if (ctx.isRetry()) {
+                retry(ctx);
+            }
+            Statement stmt = conn.createStatement();
             ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
             ResultSetMetaData rData = rSet.getMetaData();
             while (rSet.next()) {
@@ -127,10 +132,7 @@ public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
                 loadPolicyLine(line, model);
             }
             rSet.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new Error(e);
-        }
+        });
     }
 
     /**
