@@ -182,31 +182,31 @@ abstract class JDBCBaseAdapter implements Adapter {
             if (ctx.isRetry()) {
                 retry(ctx);
             }
-            Statement stmt = conn.createStatement();
-            ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
-            ResultSetMetaData rData = rSet.getMetaData();
-            while (rSet.next()) {
-                CasbinRule line = new CasbinRule();
-                for (int i = 1; i <= rData.getColumnCount(); i++) {
-                    if (i == 2) {
-                        line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 3) {
-                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 4) {
-                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 5) {
-                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 6) {
-                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 7) {
-                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 8) {
-                        line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule")) {
+                ResultSetMetaData rData = rSet.getMetaData();
+                while (rSet.next()) {
+                    CasbinRule line = new CasbinRule();
+                    for (int i = 1; i <= rData.getColumnCount(); i++) {
+                        if (i == 2) {
+                            line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 3) {
+                            line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 4) {
+                            line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 5) {
+                            line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 6) {
+                            line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 7) {
+                            line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 8) {
+                            line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        }
                     }
+                    loadPolicyLine(line, model);
                 }
-                loadPolicyLine(line, model);
             }
-            rSet.close();
         });
     }
 
@@ -305,7 +305,7 @@ abstract class JDBCBaseAdapter implements Adapter {
                 conn.rollback();
 
                 e.printStackTrace();
-                throw new Error(e);
+                throw e;
             } finally {
                 conn.setAutoCommit(true);
             }
@@ -325,18 +325,19 @@ abstract class JDBCBaseAdapter implements Adapter {
             if (ctx.isRetry()) {
                 retry(ctx);
             }
-            PreparedStatement ps = conn.prepareStatement(sql);
-            CasbinRule line = savePolicyLine(ptype, rule);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                CasbinRule line = savePolicyLine(ptype, rule);
 
-            ps.setString(1, line.ptype);
-            ps.setString(2, line.v0);
-            ps.setString(3, line.v1);
-            ps.setString(4, line.v2);
-            ps.setString(5, line.v3);
-            ps.setString(6, line.v4);
-            ps.setString(7, line.v5);
-            ps.addBatch();
-            ps.executeBatch();
+                ps.setString(1, line.ptype);
+                ps.setString(2, line.v0);
+                ps.setString(3, line.v1);
+                ps.setString(4, line.v2);
+                ps.setString(5, line.v3);
+                ps.setString(6, line.v4);
+                ps.setString(7, line.v5);
+                ps.addBatch();
+                ps.executeBatch();
+            }
         });
     }
 
@@ -367,14 +368,14 @@ abstract class JDBCBaseAdapter implements Adapter {
                 sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
                 columnIndex++;
             }
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, ptype);
-            for (int j = 0; j < values.size(); j++) {
-                ps.setString(j + 2, values.get(j));
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, ptype);
+                for (int j = 0; j < values.size(); j++) {
+                    ps.setString(j + 2, values.get(j));
+                }
+                ps.addBatch();
+                ps.executeBatch();
             }
-
-            ps.addBatch();
-            ps.executeBatch();
         });
     }
 

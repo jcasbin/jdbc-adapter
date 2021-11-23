@@ -104,34 +104,34 @@ public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
             if (ctx.isRetry()) {
                 retry(ctx);
             }
-            Statement stmt = conn.createStatement();
-            ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule");
-            ResultSetMetaData rData = rSet.getMetaData();
-            while (rSet.next()) {
-                CasbinRule line = new CasbinRule();
-                for (int i = 1; i <= rData.getColumnCount(); i++) {
-                    if (i == 2) {
-                        line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 3) {
-                        line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 4) {
-                        line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 5) {
-                        line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 6) {
-                        line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 7) {
-                        line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                    } else if (i == 8) {
-                        line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule")) {
+                ResultSetMetaData rData = rSet.getMetaData();
+                while (rSet.next()) {
+                    CasbinRule line = new CasbinRule();
+                    for (int i = 1; i <= rData.getColumnCount(); i++) {
+                        if (i == 2) {
+                            line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 3) {
+                            line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 4) {
+                            line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 5) {
+                            line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 6) {
+                            line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 7) {
+                            line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        } else if (i == 8) {
+                            line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
+                        }
                     }
+                    if (filterLine(line, filter)) {
+                        continue;
+                    }
+                    loadPolicyLine(line, model);
                 }
-                if (filterLine(line, filter)) {
-                    continue;
-                }
-                loadPolicyLine(line, model);
             }
-            rSet.close();
         });
     }
 
