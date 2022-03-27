@@ -22,10 +22,7 @@ import org.casbin.jcasbin.persist.Helper;
 import org.casbin.jcasbin.persist.file_adapter.FilteredAdapter.Filter;
 
 import javax.sql.DataSource;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 /**
  * JDBCFilteredAdapter is the JDBC adapter for jCasbin.

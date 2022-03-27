@@ -92,6 +92,10 @@ class JDBCAdapterTestSets {
         e.addPolicy("cathy", "data1", "read");
         testEnforce(e, "cathy", "data1", "read", true);
 
+        e.addPolicies(new String[][]{{"cathy2", "data1", "read"},{"cathy3", "data1", "read"}});
+        testEnforce(e, "cathy2", "data1", "read", true);
+        testEnforce(e, "cathy3", "data1", "read", true);
+
         // Reload the policy from the storage to see the effect.
         e.clearPolicy();
         a.loadPolicy(e.getModel());
@@ -101,6 +105,10 @@ class JDBCAdapterTestSets {
         // Remove the added rule.
         e.removePolicy("cathy", "data1", "read");
         testEnforce(e, "cathy", "data1", "read", false);
+
+        e.removePolicies(new String[][]{{"cathy2", "data1", "read"},{"cathy3", "data1", "read"}});
+        testEnforce(e, "cathy2", "data1", "read", false);
+        testEnforce(e, "cathy3", "data1", "read", false);
 
         // Reload the policy from the storage to see the effect.
         e.clearPolicy();
