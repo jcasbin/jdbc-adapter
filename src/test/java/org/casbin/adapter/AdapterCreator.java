@@ -26,7 +26,7 @@ public interface AdapterCreator {
 }
 
 class MySQLAdapterCreator implements AdapterCreator {
-    private String url = "jdbc:mysql://127.0.0.1:3306/casbin?serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true";
+    private String url = "jdbc:mysql://127.0.0.1:3306/casbin?serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true";
     private String username = "casbin_test";
     private String password = "TEST_casbin";
     private String driver = "com.mysql.cj.jdbc.Driver";

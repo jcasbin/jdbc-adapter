@@ -17,10 +17,11 @@ package org.casbin.adapter;
 import dev.failsafe.ExecutionContext;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.casbin.jcasbin.model.Assertion;
 import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
+import org.casbin.jcasbin.persist.BatchAdapter;
 import org.casbin.jcasbin.persist.Helper;
 
 import javax.sql.DataSource;
@@ -47,7 +48,7 @@ class CasbinRule {
  * JDBCAdapter is the JDBC adapter for jCasbin.
  * It can load policy from JDBC supported database or save policy to it.
  */
-abstract class JDBCBaseAdapter implements Adapter {
+abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
     protected static final int _DEFAULT_CONNECTION_TRIES = 3;
     protected DataSource dataSource;
     private final int batchSize = 1000;
@@ -270,8 +271,10 @@ abstract class JDBCBaseAdapter implements Adapter {
                         ps.setString(7, line.v5);
 
                         ps.addBatch();
-                        if (++count % batchSize == 0) {
+                        if (++count == batchSize) {
+                            count = 0;
                             ps.executeBatch();
+                            ps.clearBatch();
                         }
                     }
                 }
@@ -292,13 +295,17 @@ abstract class JDBCBaseAdapter implements Adapter {
                         ps.setString(7, line.v5);
 
                         ps.addBatch();
-                        if (++count % batchSize == 0) {
+                        if (++count == batchSize) {
+                            count = 0;
                             ps.executeBatch();
+                            ps.clearBatch();
                         }
                     }
                 }
 
-                ps.executeBatch();
+                if(count!=0){
+                    ps.executeBatch();
+                }
 
                 conn.commit();
             } catch (SQLException e) {
@@ -311,33 +318,54 @@ abstract class JDBCBaseAdapter implements Adapter {
             }
         });
     }
-
     /**
      * addPolicy adds a policy rule to the storage.
      */
     @Override
     public void addPolicy(String sec, String ptype, List<String> rule) {
-        if (CollectionUtils.isEmpty(rule)) return;
+        List<List<String>> rules = new ArrayList<>();
+        rules.add(rule);
+        this.addPolicies(sec,ptype,rules);
+    }
+
+    @Override
+    public void addPolicies(String sec, String ptype, List<List<String>> rules) {
+        if (CollectionUtils.isEmpty(rules)) {
+            return;
+        }
 
         String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+
 
         Failsafe.with(retryPolicy).run(ctx -> {
             if (ctx.isRetry()) {
                 retry(ctx);
             }
+            conn.setAutoCommit(false);
+            int count = 0;
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                CasbinRule line = savePolicyLine(ptype, rule);
+                for(List<String> rule:rules){
+                    CasbinRule line = savePolicyLine(ptype, rule);
 
-                ps.setString(1, line.ptype);
-                ps.setString(2, line.v0);
-                ps.setString(3, line.v1);
-                ps.setString(4, line.v2);
-                ps.setString(5, line.v3);
-                ps.setString(6, line.v4);
-                ps.setString(7, line.v5);
-                ps.addBatch();
-                ps.executeBatch();
+                    ps.setString(1, line.ptype);
+                    ps.setString(2, line.v0);
+                    ps.setString(3, line.v1);
+                    ps.setString(4, line.v2);
+                    ps.setString(5, line.v3);
+                    ps.setString(6, line.v4);
+                    ps.setString(7, line.v5);
+                    ps.addBatch();
+                    if (++count == batchSize) {
+                        count=0;
+                        ps.executeBatch();
+                        ps.clearBatch();
+                    }
+                }
+                if(count!=0){
+                    ps.executeBatch();
+                }
             }
+            conn.commit();
         });
     }
 
@@ -346,8 +374,28 @@ abstract class JDBCBaseAdapter implements Adapter {
      */
     @Override
     public void removePolicy(String sec, String ptype, List<String> rule) {
-        if (CollectionUtils.isEmpty(rule)) return;
+        if (CollectionUtils.isEmpty(rule)) {
+            return;
+        }
         removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+    }
+
+    @Override
+    public void removePolicies(String sec, String ptype, List<List<String>> rules) {
+        if (CollectionUtils.isEmpty(rules)) {
+            return;
+        }
+
+        Failsafe.with(retryPolicy).run(ctx -> {
+            if (ctx.isRetry()) {
+                retry(ctx);
+            }
+            conn.setAutoCommit(false);
+            for(List<String> rule:rules){
+                removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+            }
+            conn.commit();
+        });
     }
 
     /**
@@ -356,7 +404,9 @@ abstract class JDBCBaseAdapter implements Adapter {
     @Override
     public void removeFilteredPolicy(String sec, String ptype, int fieldIndex, String... fieldValues) {
         List<String> values = Optional.of(Arrays.asList(fieldValues)).orElse(new ArrayList<>());
-        if (CollectionUtils.isEmpty(values)) return;
+        if (CollectionUtils.isEmpty(values)) {
+            return;
+        }
 
         Failsafe.with(retryPolicy).run(ctx -> {
             if (ctx.isRetry()) {
@@ -373,8 +423,7 @@ abstract class JDBCBaseAdapter implements Adapter {
                 for (int j = 0; j < values.size(); j++) {
                     ps.setString(j + 2, values.get(j));
                 }
-                ps.addBatch();
-                ps.executeBatch();
+                ps.executeUpdate();
             }
         });
     }
