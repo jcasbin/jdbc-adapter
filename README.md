@@ -36,9 +36,15 @@ For Maven:
 <dependency>
   <groupId>org.casbin</groupId>
   <artifactId>jdbc-adapter</artifactId>
-  <version>2.0.1</version>
+  <version>LATEST</version>
 </dependency>
 ```
+
+**Notice:** 
+
+Since version 2.0.2, jdbc-adapter adds an ``id`` field to the database table structure by default. 
+
+If you want to upgrade to 2.0.2 - 2.2.0, you have to add the ``id`` field manually. It is recommended to add the ``id`` field. If you don't want to add the ``id`` field, please use 2.2.1+.
 
 ## Simple Example
 

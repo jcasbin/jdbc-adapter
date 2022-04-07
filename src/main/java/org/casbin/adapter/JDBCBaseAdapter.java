@@ -152,22 +152,22 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
 
     protected void loadPolicyLine(CasbinRule line, Model model) {
         String lineText = line.ptype;
-        if (!line.v0.equals("")) {
+        if (!"".equals(line.v0)) {
             lineText += ", " + line.v0;
         }
-        if (!line.v1.equals("")) {
+        if (!"".equals(line.v1)) {
             lineText += ", " + line.v1;
         }
-        if (!line.v2.equals("")) {
+        if (!"".equals(line.v2)) {
             lineText += ", " + line.v2;
         }
-        if (!line.v3.equals("")) {
+        if (!"".equals(line.v3)) {
             lineText += ", " + line.v3;
         }
-        if (!line.v4.equals("")) {
+        if (!"".equals(line.v4)) {
             lineText += ", " + line.v4;
         }
-        if (!line.v5.equals("")) {
+        if (!"".equals(line.v5)) {
             lineText += ", " + line.v5;
         }
 
@@ -184,27 +184,17 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 retry(ctx);
             }
             try (Statement stmt = conn.createStatement();
-                 ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule")) {
+                 ResultSet rSet = stmt.executeQuery("SELECT ptype,v0,v1,v2,v3,v4,v5 FROM casbin_rule")) {
                 ResultSetMetaData rData = rSet.getMetaData();
                 while (rSet.next()) {
                     CasbinRule line = new CasbinRule();
-                    for (int i = 1; i <= rData.getColumnCount(); i++) {
-                        if (i == 2) {
-                            line.ptype = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 3) {
-                            line.v0 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 4) {
-                            line.v1 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 5) {
-                            line.v2 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 6) {
-                            line.v3 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 7) {
-                            line.v4 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        } else if (i == 8) {
-                            line.v5 = rSet.getObject(i) == null ? "" : (String) rSet.getObject(i);
-                        }
-                    }
+                    line.ptype = rSet.getObject(1) == null ? "" : (String) rSet.getObject(1);
+                    line.v0 =  rSet.getObject(2) == null ? "" : (String) rSet.getObject(2);
+                    line.v1 =  rSet.getObject(3) == null ? "" : (String) rSet.getObject(3);
+                    line.v2 =  rSet.getObject(4) == null ? "" : (String) rSet.getObject(4);
+                    line.v3 =  rSet.getObject(5) == null ? "" : (String) rSet.getObject(5);
+                    line.v4 =  rSet.getObject(6) == null ? "" : (String) rSet.getObject(6);
+                    line.v5 =  rSet.getObject(7) == null ? "" : (String) rSet.getObject(7);
                     loadPolicyLine(line, model);
                 }
             }
