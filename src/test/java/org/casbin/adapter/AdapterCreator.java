@@ -112,3 +112,4 @@ class SQLServerAdapterCreator implements AdapterCreator {
         return new JDBCAdapter(dataSource);
     }
 }
+
