@@ -354,8 +354,15 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 if(count!=0){
                     ps.executeBatch();
                 }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+
+                e.printStackTrace();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
-            conn.commit();
         });
     }
 
@@ -381,10 +388,19 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 retry(ctx);
             }
             conn.setAutoCommit(false);
-            for(List<String> rule:rules){
-                removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+            try {
+                for (List<String> rule : rules) {
+                    removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+
+                e.printStackTrace();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
-            conn.commit();
         });
     }
 
