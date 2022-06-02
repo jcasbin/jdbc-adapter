@@ -56,6 +56,32 @@ public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
         super(dataSource);
     }
 
+    /**
+     * JDBCAdapter is the constructor for JDBCAdapter.
+     *
+     * @param driver             the JDBC driver, like "com.mysql.cj.jdbc.Driver".
+     * @param url                the JDBC URL, like "jdbc:mysql://localhost:3306/casbin".
+     * @param username           the username of the database.
+     * @param password           the password of the database.
+     * @param removePolicyFailed whether to throw an exception when delete strategy fails.
+     * @param tableName          the table name of casbin rule.
+     * @param autoCreateTable    whether to create the table automatically.
+     */
+    public JDBCAdapter(String driver, String url, String username, String password, boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        super(driver, url, username, password, removePolicyFailed, tableName, autoCreateTable);
+    }
+
+    /**
+     * JDBCAdapter is the constructor for JDBCAdapter.
+     *
+     * @param dataSource         the JDBC DataSource.
+     * @param removePolicyFailed whether to throw an exception when delete strategy fails.
+     * @param tableName          the table name of casbin rule.
+     * @param autoCreateTable    whether to create the table automatically.
+     */
+    public JDBCAdapter(DataSource dataSource, boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        super(dataSource, removePolicyFailed, tableName, autoCreateTable);
+    }
 
     /**
      * loadFilteredPolicy loads only policy rules that match the filter.
@@ -102,7 +128,7 @@ public class JDBCAdapter extends JDBCBaseAdapter implements FilteredAdapter {
                 retry(ctx);
             }
             try (Statement stmt = conn.createStatement();
-                 ResultSet rSet = stmt.executeQuery("SELECT * FROM casbin_rule")) {
+                 ResultSet rSet = stmt.executeQuery(renderActualSql("SELECT * FROM casbin_rule"))) {
                 ResultSetMetaData rData = rSet.getMetaData();
                 while (rSet.next()) {
                     CasbinRule line = new CasbinRule();
