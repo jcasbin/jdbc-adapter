@@ -18,6 +18,7 @@ import dev.failsafe.ExecutionContext;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import org.apache.commons.collections4.CollectionUtils;
+import org.casbin.jcasbin.exception.CasbinAdapterException;
 import org.casbin.jcasbin.model.Assertion;
 import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
@@ -49,8 +50,13 @@ class CasbinRule {
  * It can load policy from JDBC supported database or save policy to it.
  */
 abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
+    protected static final String DEFAULT_TABLE_NAME = "casbin_rule";
+    protected static final boolean DEFAULT_REMOVE_POLICY_FAILED = false;
+    protected static final boolean DEFAULT_AUTO_CREATE_TABLE = true;
     protected static final int _DEFAULT_CONNECTION_TRIES = 3;
     protected DataSource dataSource;
+    protected String tableName;
+    protected boolean removePolicyFailed;
     private final int batchSize = 1000;
     protected Connection conn;
     protected RetryPolicy<Object> retryPolicy;
@@ -67,16 +73,27 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
         this(new JDBCDataSource(driver, url, username, password));
     }
 
+    protected JDBCBaseAdapter(String driver, String url, String username, String password, boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        this(new JDBCDataSource(driver, url, username, password), removePolicyFailed, tableName, autoCreateTable);
+    }
+
     /**
      * The constructor for JDBCAdapter, will not try to create database.
      *
      * @param dataSource the JDBC DataSource.
      */
     protected JDBCBaseAdapter(DataSource dataSource) throws Exception {
-        this.dataSource = dataSource;
-        migrate();
+        this(dataSource, DEFAULT_REMOVE_POLICY_FAILED, DEFAULT_TABLE_NAME, DEFAULT_AUTO_CREATE_TABLE);
     }
 
+    protected JDBCBaseAdapter(DataSource dataSource, boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        this.dataSource = dataSource;
+        this.tableName = tableName;
+        this.removePolicyFailed = removePolicyFailed;
+        if (autoCreateTable) {
+            migrate();
+        }
+    }
 
     protected void migrate() throws SQLException {
         retryPolicy = RetryPolicy.builder()
@@ -86,37 +103,37 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 .build();
         conn = dataSource.getConnection();
         Statement stmt = conn.createStatement();
-        String sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY auto_increment, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+        String sql = renderActualSql("CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY auto_increment, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
         String productName = conn.getMetaData().getDatabaseProductName();
 
         switch (productName) {
             case "MySQL":
-                String hasTableSql = "SHOW TABLES LIKE 'casbin_rule';";
+                String hasTableSql = renderActualSql("SHOW TABLES LIKE 'casbin_rule';");
                 ResultSet rs = stmt.executeQuery(hasTableSql);
                 if (rs.next()) {
                     return;
                 }
                 break;
             case "Oracle":
-                sql = "declare begin execute immediate 'CREATE TABLE CASBIN_RULE(id NUMBER(5, 0) not NULL primary key, ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; " +
+                sql = renderActualSql("declare begin execute immediate 'CREATE TABLE CASBIN_RULE(id NUMBER(5, 0) not NULL primary key, ptype VARCHAR(100) not NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))'; " +
                         "exception when others then " +
                         "if SQLCODE = -955 then " +
-                            "null; " +
+                        "null; " +
                         "else raise; " +
                         "end if; " +
-                        "end;";
+                        "end;");
                 break;
             case "Microsoft SQL Server":
-                sql = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(id int NOT NULL primary key identity(1, 1), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+                sql = renderActualSql("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='casbin_rule' and xtype='U') CREATE TABLE casbin_rule(id int NOT NULL primary key identity(1, 1), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
                 break;
             case "PostgreSQL":
-                sql = "CREATE SEQUENCE IF NOT EXISTS CASBIN_SEQUENCE START 1;";
+                sql = renderActualSql("CREATE SEQUENCE IF NOT EXISTS CASBIN_SEQUENCE START 1;");
                 break;
         }
 
         stmt.executeUpdate(sql);
         if (productName.equals("Oracle")) {
-            sql = "declare " +
+            sql = renderActualSql("declare " +
                     "V_NUM number;" +
                     "BEGIN " +
                     "V_NUM := 0;  " +
@@ -125,9 +142,9 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     "null;" +
                     "else " +
                     "execute immediate 'CREATE SEQUENCE casbin_sequence increment by 1 start with 1 nomaxvalue nocycle nocache';" +
-                    "end if;END;";
+                    "end if;END;");
             stmt.executeUpdate(sql);
-            sql = "declare " +
+            sql = renderActualSql("declare " +
                     "V_NUM number;" +
                     "BEGIN " +
                     "V_NUM := 0;" +
@@ -142,10 +159,10 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     "                        select casbin_sequence.nextval into:new.id from dual;"+
                     "                        end;';" +
                     "end if;" +
-                    "END;";
+                    "END;");
             stmt.executeUpdate(sql);
         } else if (productName.equals("PostgreSQL")) {
-            sql = "CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY default nextval('CASBIN_SEQUENCE'::regclass), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))";
+            sql = renderActualSql("CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY default nextval('CASBIN_SEQUENCE'::regclass), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
             stmt.executeUpdate(sql);
         }
     }
@@ -184,7 +201,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 retry(ctx);
             }
             try (Statement stmt = conn.createStatement();
-                 ResultSet rSet = stmt.executeQuery("SELECT ptype,v0,v1,v2,v3,v4,v5 FROM casbin_rule")) {
+                 ResultSet rSet = stmt.executeQuery(renderActualSql("SELECT ptype,v0,v1,v2,v3,v4,v5 FROM casbin_rule"))) {
                 ResultSetMetaData rData = rSet.getMetaData();
                 while (rSet.next()) {
                     CasbinRule line = new CasbinRule();
@@ -232,8 +249,8 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
      */
     @Override
     public void savePolicy(Model model) {
-        String cleanSql = "delete from casbin_rule";
-        String addSql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+        String cleanSql = renderActualSql("delete from casbin_rule");
+        String addSql = renderActualSql("INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)");
 
         Failsafe.with(retryPolicy).run(ctx -> {
             if (ctx.isRetry()) {
@@ -324,7 +341,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             return;
         }
 
-        String sql = "INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)";
+        String sql = renderActualSql("INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)");
 
 
         Failsafe.with(retryPolicy).run(ctx -> {
@@ -418,7 +435,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             if (ctx.isRetry()) {
                 retry(ctx);
             }
-            String sql = "DELETE FROM casbin_rule WHERE ptype = ?";
+            String sql = renderActualSql("DELETE FROM casbin_rule WHERE ptype = ?");
             int columnIndex = fieldIndex;
             for (int i = 0; i < values.size(); i++) {
                 sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
@@ -429,7 +446,10 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 for (int j = 0; j < values.size(); j++) {
                     ps.setString(j + 2, values.get(j));
                 }
-                ps.executeUpdate();
+                int rows = ps.executeUpdate();
+                if (rows < 1 && removePolicyFailed) {
+                    throw new CasbinAdapterException(String.format("Remove filtered policy error, remove %d rows, expect least 1 rows", rows));
+                }
             }
         });
     }
@@ -447,5 +467,9 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
         } else {
             throw new Error(ctx.getLastFailure());
         }
+    }
+
+    protected String renderActualSql(String sql) {
+        return sql.replace(DEFAULT_TABLE_NAME, tableName);
     }
 }

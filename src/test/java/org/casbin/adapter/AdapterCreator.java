@@ -45,6 +45,19 @@ class MySQLAdapterCreator implements AdapterCreator {
 
         return new JDBCAdapter(dataSource);
     }
+
+    public JDBCAdapter create(boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        return new JDBCAdapter(driver, url, username, password, removePolicyFailed, tableName, autoCreateTable);
+    }
+
+    public JDBCAdapter createViaDataSource(boolean removePolicyFailed, String tableName, boolean autoCreateTable) throws Exception {
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setURL(url);
+        dataSource.setUser(username);
+        dataSource.setPassword(password);
+
+        return new JDBCAdapter(dataSource, removePolicyFailed, tableName, autoCreateTable);
+    }
 }
 
 class OracleAdapterCreator implements AdapterCreator {

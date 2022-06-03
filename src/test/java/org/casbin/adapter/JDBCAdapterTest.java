@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -201,5 +202,15 @@ public class JDBCAdapterTest {
         testHasPolicy(e, asList("admin", "domain2", "data2", "read"), false);
 
         adapter.close();
+    }
+
+    @Test
+    public void testConstructorParams() throws Exception {
+        JDBCAdapter adapter = new MySQLAdapterCreator().create(true, "table_name_test", true);
+        JDBCAdapter adapterViaDataSource = new MySQLAdapterCreator().createViaDataSource(true, "table_name_test", true);
+        Assert.assertThrows(CasbinAdapterException.class, () -> adapter.removePolicy("p", "p", Arrays.asList("cathy", "data1", "read")));
+        Assert.assertThrows(CasbinAdapterException.class, () -> adapterViaDataSource.removePolicy("p", "p", Arrays.asList("cathy", "data1", "read")));
+        adapter.close();
+        adapterViaDataSource.close();
     }
 }
