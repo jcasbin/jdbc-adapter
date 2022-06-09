@@ -213,4 +213,48 @@ public class JDBCAdapterTest {
         adapter.close();
         adapterViaDataSource.close();
     }
+
+    @Test
+    public void testRemovePolicy() throws Exception {
+        JDBCAdapter adapter = new MySQLAdapterCreator().create();
+
+        // Because the DB is empty at first,
+        // so we need to load the policy from the file adapter (.CSV) first.
+        Enforcer e = new Enforcer("examples/rbac_model.conf", "examples/rbac_policy.csv");
+
+        // This is a trick to save the current policy to the DB.
+        // We can't call e.savePolicy() because the adapter in the enforcer is still the file adapter.
+        // The current policy means the policy in the jCasbin enforcer (aka in memory).
+        adapter.savePolicy(e.getModel());
+
+        e.clearPolicy();
+        testGetPolicy(e, asList());
+
+        e = new Enforcer("examples/rbac_model.conf", adapter);
+        testGetPolicy(e, asList(
+                asList("alice", "data1", "read"),
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+
+        adapter.removePolicy("p", "p", Arrays.asList("alice", "data1", "read"));
+        e = new Enforcer("examples/rbac_model.conf", adapter);
+        testGetPolicy(e, asList(
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+
+        adapter.removePolicy("p", "p", Arrays.asList("bob", "data2"));
+        e = new Enforcer("examples/rbac_model.conf", adapter);
+        testGetPolicy(e, asList(
+                asList("bob", "data2", "write"),
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+
+        adapter.removePolicy("p", "p", Arrays.asList("bob", "data2", "write"));
+        e = new Enforcer("examples/rbac_model.conf", adapter);
+        testGetPolicy(e, asList(
+                asList("data2_admin", "data2", "read"),
+                asList("data2_admin", "data2", "write")));
+    }
 }
