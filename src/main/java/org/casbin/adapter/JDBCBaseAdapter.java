@@ -132,7 +132,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
         }
 
         stmt.executeUpdate(sql);
-        if (productName.equals("Oracle")) {
+        if ("Oracle".equals(productName)) {
             sql = renderActualSql("declare " +
                     "V_NUM number;" +
                     "BEGIN " +
@@ -152,16 +152,16 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     "if V_NUM > 0 then " +
                     "null;" +
                     "else " +
-                    "execute immediate 'create trigger casbin_id_autoincrement before "+
-                    "                        insert on CASBIN_RULE for each row "+
-                    "                        when (new.id is null) "+
-                    "                        begin "+
-                    "                        select casbin_sequence.nextval into:new.id from dual;"+
+                    "execute immediate 'create trigger casbin_id_autoincrement before " +
+                    "                        insert on CASBIN_RULE for each row " +
+                    "                        when (new.id is null) " +
+                    "                        begin " +
+                    "                        select casbin_sequence.nextval into:new.id from dual;" +
                     "                        end;';" +
                     "end if;" +
                     "END;");
             stmt.executeUpdate(sql);
-        } else if (productName.equals("PostgreSQL")) {
+        } else if ("PostgreSQL".equals(productName)) {
             sql = renderActualSql("CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY default nextval('CASBIN_SEQUENCE'::regclass), ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
             stmt.executeUpdate(sql);
         }
@@ -206,12 +206,12 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 while (rSet.next()) {
                     CasbinRule line = new CasbinRule();
                     line.ptype = rSet.getObject(1) == null ? "" : (String) rSet.getObject(1);
-                    line.v0 =  rSet.getObject(2) == null ? "" : (String) rSet.getObject(2);
-                    line.v1 =  rSet.getObject(3) == null ? "" : (String) rSet.getObject(3);
-                    line.v2 =  rSet.getObject(4) == null ? "" : (String) rSet.getObject(4);
-                    line.v3 =  rSet.getObject(5) == null ? "" : (String) rSet.getObject(5);
-                    line.v4 =  rSet.getObject(6) == null ? "" : (String) rSet.getObject(6);
-                    line.v5 =  rSet.getObject(7) == null ? "" : (String) rSet.getObject(7);
+                    line.v0 = rSet.getObject(2) == null ? "" : (String) rSet.getObject(2);
+                    line.v1 = rSet.getObject(3) == null ? "" : (String) rSet.getObject(3);
+                    line.v2 = rSet.getObject(4) == null ? "" : (String) rSet.getObject(4);
+                    line.v3 = rSet.getObject(5) == null ? "" : (String) rSet.getObject(5);
+                    line.v4 = rSet.getObject(6) == null ? "" : (String) rSet.getObject(6);
+                    line.v5 = rSet.getObject(7) == null ? "" : (String) rSet.getObject(7);
                     loadPolicyLine(line, model);
                 }
             }
@@ -310,7 +310,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     }
                 }
 
-                if(count!=0){
+                if (count != 0) {
                     ps.executeBatch();
                 }
 
@@ -325,6 +325,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             }
         });
     }
+
     /**
      * addPolicy adds a policy rule to the storage.
      */
@@ -332,7 +333,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
     public void addPolicy(String sec, String ptype, List<String> rule) {
         List<List<String>> rules = new ArrayList<>();
         rules.add(rule);
-        this.addPolicies(sec,ptype,rules);
+        this.addPolicies(sec, ptype, rules);
     }
 
     @Override
@@ -351,7 +352,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             conn.setAutoCommit(false);
             int count = 0;
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                for(List<String> rule:rules){
+                for (List<String> rule : rules) {
                     CasbinRule line = savePolicyLine(ptype, rule);
 
                     ps.setString(1, line.ptype);
@@ -363,12 +364,12 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     ps.setString(7, line.v5);
                     ps.addBatch();
                     if (++count == batchSize) {
-                        count=0;
+                        count = 0;
                         ps.executeBatch();
                         ps.clearBatch();
                     }
                 }
-                if(count!=0){
+                if (count != 0) {
                     ps.executeBatch();
                 }
                 conn.commit();
@@ -391,7 +392,32 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
         if (CollectionUtils.isEmpty(rule)) {
             return;
         }
-        removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+
+        Failsafe.with(retryPolicy).run(ctx -> {
+            if (ctx.isRetry()) {
+                retry(ctx);
+            }
+            String sql = renderActualSql("DELETE FROM casbin_rule WHERE ptype = ?");
+            int columnIndex = 0;
+            for (int i = 0; i < rule.size(); i++) {
+                sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
+                columnIndex++;
+            }
+            while (columnIndex <= 5) {
+                sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " IS NULL");
+                columnIndex++;
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, ptype);
+                for (int j = 0; j < rule.size(); j++) {
+                    ps.setString(j + 2, rule.get(j));
+                }
+                int rows = ps.executeUpdate();
+                if (rows < 1 && removePolicyFailed) {
+                    throw new CasbinAdapterException(String.format("Remove policy error, remove %d rows, expect least 1 rows", rows));
+                }
+            }
+        });
     }
 
     @Override
@@ -407,7 +433,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             conn.setAutoCommit(false);
             try {
                 for (List<String> rule : rules) {
-                    removeFilteredPolicy(sec, ptype, 0, rule.toArray(new String[0]));
+                    removePolicy(sec, ptype, rule);
                 }
                 conn.commit();
             } catch (SQLException e) {
