@@ -90,18 +90,18 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
         this.dataSource = dataSource;
         this.tableName = tableName;
         this.removePolicyFailed = removePolicyFailed;
+        retryPolicy = RetryPolicy.builder()
+            .handle(SQLException.class)
+            .withDelay(Duration.ofSeconds(1))
+            .withMaxRetries(_DEFAULT_CONNECTION_TRIES)
+            .build();
+        conn = dataSource.getConnection();
         if (autoCreateTable) {
             migrate();
         }
     }
 
     protected void migrate() throws SQLException {
-        retryPolicy = RetryPolicy.builder()
-                .handle(SQLException.class)
-                .withDelay(Duration.ofSeconds(1))
-                .withMaxRetries(_DEFAULT_CONNECTION_TRIES)
-                .build();
-        conn = dataSource.getConnection();
         Statement stmt = conn.createStatement();
         String sql = renderActualSql("CREATE TABLE IF NOT EXISTS casbin_rule(id int NOT NULL PRIMARY KEY auto_increment, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
         String productName = conn.getMetaData().getDatabaseProductName();
