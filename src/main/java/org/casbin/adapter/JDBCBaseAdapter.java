@@ -129,6 +129,9 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             case "PostgreSQL":
                 sql = renderActualSql("CREATE SEQUENCE IF NOT EXISTS CASBIN_SEQUENCE START 1;");
                 break;
+            case "H2":
+                sql = renderActualSql("CREATE TABLE IF NOT EXISTS casbin_rule(id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, ptype VARCHAR(100) NOT NULL, v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100), v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100))");
+                break;
         }
 
         stmt.executeUpdate(sql);
