@@ -480,12 +480,11 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             }
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ptype);
-                for (int j = 0, index = 0; j < values.size(); j++, index++) {
-                    while (j < values.size() && Objects.equals(values.get(j), "")) {
-                        ++j;
+                int index = 2;
+                for (String value : values) {
+                    if (!Objects.equals(value, "")) {
+                        ps.setString(index++, value);
                     }
-                    if(j >= values.size()) break;
-                    ps.setString(index + 2, values.get(j));
                 }
                 int rows = ps.executeUpdate();
                 if (rows < 1 && removePolicyFailed) {
