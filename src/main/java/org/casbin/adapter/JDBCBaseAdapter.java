@@ -473,11 +473,10 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             }
             String sql = renderActualSql("DELETE FROM casbin_rule WHERE ptype = ?");
             int columnIndex = fieldIndex;
-            for (String value : values) {
-                if (!Objects.equals(value, "")) {
+            for (int i = 0; i < values.size(); i++, columnIndex++) {
+                if (!Objects.equals(values.get(i), "")) {
                     sql = String.format("%s%s%s%s", sql, " AND v", columnIndex, " = ?");
                 }
-                columnIndex++;
             }
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ptype);
@@ -485,9 +484,8 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     while (j < values.size() && Objects.equals(values.get(j), "")) {
                         ++j;
                     }
-                    if(j < values.size()) {
-                        ps.setString(index + 2, values.get(j));
-                    }
+                    if(j >= values.size()) break;
+                    ps.setString(index + 2, values.get(j));
                 }
                 int rows = ps.executeUpdate();
                 if (rows < 1 && removePolicyFailed) {
