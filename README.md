@@ -6,7 +6,7 @@ JDBC Adapter
 [![codecov](https://codecov.io/gh/jcasbin/jdbc-adapter/branch/master/graph/badge.svg?token=YoXB4Wmvrb)](https://codecov.io/gh/jcasbin/jdbc-adapter)
 [![Javadocs](https://www.javadoc.io/badge/org.casbin/jdbc-adapter.svg)](https://www.javadoc.io/doc/org.casbin/jdbc-adapter)
 [![Maven Central](https://img.shields.io/maven-central/v/org.casbin/jdbc-adapter.svg)](https://mvnrepository.com/artifact/org.casbin/jdbc-adapter/latest)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/casbin/lobby)
+[![Discord](https://img.shields.io/discord/1022748306096537660?logo=discord&label=discord&color=5865F2)](https://discord.gg/S5UjpzGZjN)
 
 JDBC Adapter is the [JDBC](https://en.wikipedia.org/wiki/Java_Database_Connectivity) adapter for [jCasbin](https://github.com/casbin/jcasbin). With this library, jCasbin can load policy from JDBC supported database or save policy to it.
 
