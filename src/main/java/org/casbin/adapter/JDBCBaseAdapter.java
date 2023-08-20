@@ -272,56 +272,8 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
 
             try (Statement statement = conn.createStatement(); PreparedStatement ps = conn.prepareStatement(addSql)) {
                 statement.execute(cleanSql);
-                for (Map.Entry<String, Assertion> entry : model.model.get("p").entrySet()) {
-                    String ptype = entry.getKey();
-                    Assertion ast = entry.getValue();
-
-                    for (List<String> rule : ast.policy) {
-                        CasbinRule line = savePolicyLine(ptype, rule);
-
-                        ps.setString(1, line.ptype);
-                        ps.setString(2, line.v0);
-                        ps.setString(3, line.v1);
-                        ps.setString(4, line.v2);
-                        ps.setString(5, line.v3);
-                        ps.setString(6, line.v4);
-                        ps.setString(7, line.v5);
-
-                        ps.addBatch();
-                        if (++count == batchSize) {
-                            count = 0;
-                            ps.executeBatch();
-                            ps.clearBatch();
-                        }
-                    }
-                }
-
-                if (model.model.containsKey("g")) {
-                    for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
-                        String ptype = entry.getKey();
-                        Assertion ast = entry.getValue();
-
-                        for (List<String> rule : ast.policy) {
-                            CasbinRule line = savePolicyLine(ptype, rule);
-
-                            ps.setString(1, line.ptype);
-                            ps.setString(2, line.v0);
-                            ps.setString(3, line.v1);
-                            ps.setString(4, line.v2);
-                            ps.setString(5, line.v3);
-                            ps.setString(6, line.v4);
-                            ps.setString(7, line.v5);
-
-                            ps.addBatch();
-                            if (++count == batchSize) {
-                                count = 0;
-                                ps.executeBatch();
-                                ps.clearBatch();
-                            }
-                        }
-                    }
-                }
-
+                count = saveSectionPolicyWithBatch(model, "p", ps, count);
+                count = saveSectionPolicyWithBatch(model, "g", ps, count);
 
                 if (count != 0) {
                     ps.executeBatch();
@@ -337,6 +289,39 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                 conn.setAutoCommit(true);
             }
         });
+    }
+
+    /**
+     * saveSectionPolicyWithBatch saves section policy rules to the storage.
+     * as a helper function for savePolicy
+     * only when the batchCount exceeds the batchSize will the actual save operation be performed
+     */
+    private int saveSectionPolicyWithBatch(Model model, String section, PreparedStatement ps, int batchCount) throws SQLException {
+        if (!model.model.containsKey(section)) return batchCount;
+        for (Map.Entry<String, Assertion> entry : model.model.get(section).entrySet()) {
+            String ptype = entry.getKey();
+            Assertion ast = entry.getValue();
+
+            for (List<String> rule : ast.policy) {
+                CasbinRule line = savePolicyLine(ptype, rule);
+
+                ps.setString(1, line.ptype);
+                ps.setString(2, line.v0);
+                ps.setString(3, line.v1);
+                ps.setString(4, line.v2);
+                ps.setString(5, line.v3);
+                ps.setString(6, line.v4);
+                ps.setString(7, line.v5);
+
+                ps.addBatch();
+                if (++batchCount == batchSize) {
+                    batchCount = 0;
+                    ps.executeBatch();
+                    ps.clearBatch();
+                }
+            }
+        }
+        return batchCount;
     }
 
     /**
