@@ -296,29 +296,32 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
                     }
                 }
 
-                for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
-                    String ptype = entry.getKey();
-                    Assertion ast = entry.getValue();
+                if (model.model.containsKey("g")) {
+                    for (Map.Entry<String, Assertion> entry : model.model.get("g").entrySet()) {
+                        String ptype = entry.getKey();
+                        Assertion ast = entry.getValue();
 
-                    for (List<String> rule : ast.policy) {
-                        CasbinRule line = savePolicyLine(ptype, rule);
+                        for (List<String> rule : ast.policy) {
+                            CasbinRule line = savePolicyLine(ptype, rule);
 
-                        ps.setString(1, line.ptype);
-                        ps.setString(2, line.v0);
-                        ps.setString(3, line.v1);
-                        ps.setString(4, line.v2);
-                        ps.setString(5, line.v3);
-                        ps.setString(6, line.v4);
-                        ps.setString(7, line.v5);
+                            ps.setString(1, line.ptype);
+                            ps.setString(2, line.v0);
+                            ps.setString(3, line.v1);
+                            ps.setString(4, line.v2);
+                            ps.setString(5, line.v3);
+                            ps.setString(6, line.v4);
+                            ps.setString(7, line.v5);
 
-                        ps.addBatch();
-                        if (++count == batchSize) {
-                            count = 0;
-                            ps.executeBatch();
-                            ps.clearBatch();
+                            ps.addBatch();
+                            if (++count == batchSize) {
+                                count = 0;
+                                ps.executeBatch();
+                                ps.clearBatch();
+                            }
                         }
                     }
                 }
+
 
                 if (count != 0) {
                     ps.executeBatch();
