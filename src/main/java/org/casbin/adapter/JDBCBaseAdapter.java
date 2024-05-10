@@ -24,6 +24,7 @@ import org.casbin.jcasbin.model.Model;
 import org.casbin.jcasbin.persist.Adapter;
 import org.casbin.jcasbin.persist.BatchAdapter;
 import org.casbin.jcasbin.persist.Helper;
+import org.casbin.jcasbin.persist.UpdatableAdapter;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -49,7 +50,7 @@ class CasbinRule {
  * JDBCAdapter is the JDBC adapter for jCasbin.
  * It can load policy from JDBC supported database or save policy to it.
  */
-abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
+abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapter {
     protected static final String DEFAULT_TABLE_NAME = "casbin_rule";
     protected static final boolean DEFAULT_REMOVE_POLICY_FAILED = false;
     protected static final boolean DEFAULT_AUTO_CREATE_TABLE = true;
@@ -479,6 +480,48 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter {
             }
         });
     }
+
+    /**
+     * updatePolicy updates a policy rule from the current policy.
+     */
+    @Override
+    public void updatePolicy(String sec, String ptype, List<String> oldRule, List<String> newRule) {
+        if (CollectionUtils.isEmpty(oldRule) || CollectionUtils.isEmpty(newRule)) {
+            return;
+        }
+
+        String sql = renderActualSql("INSERT INTO casbin_rule (ptype,v0,v1,v2,v3,v4,v5) VALUES(?,?,?,?,?,?,?)");
+
+
+        Failsafe.with(retryPolicy).run(ctx -> {
+            if (ctx.isRetry()) {
+                retry(ctx);
+            }
+            conn.setAutoCommit(false);
+            removePolicy(sec, ptype, oldRule);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                CasbinRule line = this.savePolicyLine(ptype, newRule);
+
+                ps.setString(1, line.ptype);
+                ps.setString(2, line.v0);
+                ps.setString(3, line.v1);
+                ps.setString(4, line.v2);
+                ps.setString(5, line.v3);
+                ps.setString(6, line.v4);
+                ps.setString(7, line.v5);
+                ps.executeUpdate();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+
+                e.printStackTrace();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        });
+    }
+
 
     /**
      * Close the Connection.
