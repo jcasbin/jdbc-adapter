@@ -26,5 +26,3 @@ target
 
 .idea/
 *.iml
-
-src/test/java/org/casbin/adapter/AdapterCreator.java
