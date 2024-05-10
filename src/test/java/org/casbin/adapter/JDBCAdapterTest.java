@@ -252,6 +252,7 @@ public class JDBCAdapterTest {
                 asList("data2_admin", "data2", "write")));
 
         adapter.removePolicy("p", "p", Arrays.asList("bob", "data2", "write"));
+
         e = new Enforcer("examples/rbac_model.conf", adapter);
         testGetPolicy(e, asList(
                 asList("data2_admin", "data2", "read"),
