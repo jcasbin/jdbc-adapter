@@ -234,22 +234,22 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
 
         line.ptype = ptype;
         if (rule.size() > 0) {
-            line.v0 = rule.get(0);
+            line.v0 = quoteRule(rule.get(0));
         }
         if (rule.size() > 1) {
-            line.v1 = rule.get(1);
+            line.v1 = quoteRule(rule.get(1));
         }
         if (rule.size() > 2) {
-            line.v2 = rule.get(2);
+            line.v2 = quoteRule(rule.get(2));
         }
         if (rule.size() > 3) {
-            line.v3 = rule.get(3);
+            line.v3 = quoteRule(rule.get(3));
         }
         if (rule.size() > 4) {
-            line.v4 = rule.get(4);
+            line.v4 = quoteRule(rule.get(4));
         }
         if (rule.size() > 5) {
-            line.v5 = rule.get(5);
+            line.v5 = quoteRule(rule.get(5));
         }
 
         return line;
@@ -539,5 +539,12 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
 
     protected String renderActualSql(String sql) {
         return sql.replace(DEFAULT_TABLE_NAME, tableName);
+    }
+
+    private String quoteRule(String rule) {
+        if (rule.startsWith("\"") && rule.endsWith("\"")) {
+            return rule;
+        }
+        return String.format("\"%s\"", rule);
     }
 }
