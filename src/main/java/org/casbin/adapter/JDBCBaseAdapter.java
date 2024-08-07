@@ -179,6 +179,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
     }
 
     protected void loadPolicyLine(CasbinRule line, Model model) {
+        escapeCasbinRule(line);
         String lineText = line.ptype;
         if (!"".equals(line.v0)) {
             lineText += ", " + line.v0;
@@ -234,22 +235,22 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
 
         line.ptype = ptype;
         if (rule.size() > 0) {
-            line.v0 = quoteRule(rule.get(0));
+            line.v0 = rule.get(0);
         }
         if (rule.size() > 1) {
-            line.v1 = quoteRule(rule.get(1));
+            line.v1 = rule.get(1);
         }
         if (rule.size() > 2) {
-            line.v2 = quoteRule(rule.get(2));
+            line.v2 = rule.get(2);
         }
         if (rule.size() > 3) {
-            line.v3 = quoteRule(rule.get(3));
+            line.v3 = rule.get(3);
         }
         if (rule.size() > 4) {
-            line.v4 = quoteRule(rule.get(4));
+            line.v4 = rule.get(4);
         }
         if (rule.size() > 5) {
-            line.v5 = quoteRule(rule.get(5));
+            line.v5 = rule.get(5);
         }
 
         return line;
@@ -541,8 +542,17 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
         return sql.replace(DEFAULT_TABLE_NAME, tableName);
     }
 
-    private String quoteRule(String rule) {
-        if (rule.startsWith("\"") && rule.endsWith("\"")) {
+    private void escapeCasbinRule(CasbinRule line) {
+        line.v0 = escapeSingleRule(line.v0);
+        line.v1 = escapeSingleRule(line.v1);
+        line.v2 = escapeSingleRule(line.v2);
+        line.v3 = escapeSingleRule(line.v3);
+        line.v4 = escapeSingleRule(line.v4);
+        line.v5 = escapeSingleRule(line.v5);
+    }
+
+    private String escapeSingleRule(String rule) {
+        if (rule.isEmpty() || (rule.startsWith("\"") && rule.endsWith("\""))) {
             return rule;
         }
         return String.format("\"%s\"", rule);
