@@ -179,6 +179,7 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
     }
 
     protected void loadPolicyLine(CasbinRule line, Model model) {
+        escapeCasbinRule(line);
         String lineText = line.ptype;
         if (!"".equals(line.v0)) {
             lineText += ", " + line.v0;
@@ -539,5 +540,21 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
 
     protected String renderActualSql(String sql) {
         return sql.replace(DEFAULT_TABLE_NAME, tableName);
+    }
+
+    private void escapeCasbinRule(CasbinRule line) {
+        line.v0 = escapeSingleRule(line.v0);
+        line.v1 = escapeSingleRule(line.v1);
+        line.v2 = escapeSingleRule(line.v2);
+        line.v3 = escapeSingleRule(line.v3);
+        line.v4 = escapeSingleRule(line.v4);
+        line.v5 = escapeSingleRule(line.v5);
+    }
+
+    private String escapeSingleRule(String rule) {
+        if (rule.isEmpty() || (rule.startsWith("\"") && rule.endsWith("\""))) {
+            return rule;
+        }
+        return String.format("\"%s\"", rule);
     }
 }
