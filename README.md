@@ -10,7 +10,7 @@ JDBC Adapter
 
 JDBC Adapter is the [JDBC](https://en.wikipedia.org/wiki/Java_Database_Connectivity) adapter for [jCasbin](https://github.com/casbin/jcasbin). With this library, jCasbin can load policy from JDBC supported database or save policy to it.
 
-Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E19226-01/820-7688/gawms/index.html), The current supported databases are:
+Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E19226-01/820-7688/gawms/index.html), The currently supported databases are:
 
 - MySQL
 - Java DB
@@ -19,14 +19,6 @@ Based on [Supported JDBC Drivers and Databases](https://docs.oracle.com/cd/E1922
 - DB2
 - Sybase
 - Microsoft SQL Server
-
-## Verified Database
-
-- MySQL
-- PostgreSQL
-- Microsoft SQL Server
-
-We need more developers to help us verify. 
 
 ## Installation
 
