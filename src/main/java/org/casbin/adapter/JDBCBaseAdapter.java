@@ -284,8 +284,6 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
-
-                e.printStackTrace();
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
@@ -375,8 +373,6 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
-
-                e.printStackTrace();
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
@@ -438,8 +434,6 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
-
-                e.printStackTrace();
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
@@ -514,8 +508,6 @@ abstract class JDBCBaseAdapter implements Adapter, BatchAdapter, UpdatableAdapte
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
-
-                e.printStackTrace();
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
